@@ -61,8 +61,11 @@ export class QoderExecutor extends BaseExecutor {
     let endpointUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
 
     // We allow setting custom API base via credentials
-    const credentialsApiBase =
-      (credentials as any).customApiBase || (credentials as any).resourceUrl;
+    let credentialsApiBase: unknown;
+    if (typeof credentials === "object" && credentials !== null) {
+      const credsObj = credentials as Record<string, unknown>;
+      credentialsApiBase = credsObj.customApiBase || credsObj.resourceUrl;
+    }
     if (typeof credentialsApiBase === "string" && credentialsApiBase.trim()) {
       let base = credentialsApiBase.trim();
       if (!base.startsWith("http")) base = `https://${base}`;
@@ -129,15 +132,16 @@ export class QoderExecutor extends BaseExecutor {
         headers,
         transformedBody: payload,
       };
-    } catch (e: any) {
-      if (e.name === "AbortError") {
-        throw e;
+    } catch (e: unknown) {
+      const error = e as Error;
+      if (error.name === "AbortError") {
+        throw error;
       }
       return {
         response: new Response(
           JSON.stringify({
             error: {
-              message: `Qoder fetch error: ${e.message}`,
+              message: `Qoder fetch error: ${error.message}`,
               type: "provider_error",
             },
           }),
