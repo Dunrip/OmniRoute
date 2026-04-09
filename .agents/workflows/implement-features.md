@@ -12,17 +12,21 @@ A **5-phase** workflow that systematically harvests feature requests from GitHub
 
 ```
 _ideia/
-├── viable/          # ✅ Features ready for implementation (issues stay OPEN)
-│   ├── 1046-native-playground.md
+├── viable/                  # Features approved for implementation
+│   ├── need_details/        # ❓ Good idea but waiting for author clarification (issues stay OPEN)
+│   │   └── 1015-warp-terminal-mitm.md
+│   ├── 1046-native-playground.md           # ✅ Ready — researched and planned
 │   └── 1046-native-playground.requirements.md
-├── defer/           # ⏭️ Good ideas deferred for future cycles (issues CLOSED)
+├── defer/                   # ⏭️ Good ideas deferred for future cycles (issues CLOSED)
 │   └── 1041-smart-auto-combos.md
-└── notfit/          # ❌ Out of scope / already exists (issues CLOSED)
+└── notfit/                  # ❌ Out of scope / already exists (issues CLOSED)
     └── 945-telegram-integration.md
 
 _tasks/features-vX.Y.Z/   # Implementation plans (per-release)
 └── 1046-native-playground.plan.md
 ```
+
+> **LIFECYCLE RULE:** `viable/` files are **DELETED** once the feature is implemented — they are not moved. Only unimplemented features live in `viable/` (or `viable/need_details/`). Files in `defer/` and `notfit/` remain as permanent reference.
 
 > **BRANCH RULE**: All implementation work MUST happen on the current `release/vX.Y.Z` branch. Never create separate `feat/` branches. If no release branch exists yet, create one first using `/generate-release` Phase 1 steps 1–5.
 
@@ -110,11 +114,13 @@ Example: `1046-native-playground.md`, `1041-smart-auto-combos.md`
 <Summarize ALL comments chronologically, noting who said what and any decisions or objections raised>
 
 ### Participants
+
 - @<author> — Original requester
 - @<commenter1> — <brief role/opinion>
 - ...
 
 ### Key Points
+
 - <bullet list of the most important discussion points>
 - <agreements reached>
 - <objections raised>
@@ -124,15 +130,18 @@ Example: `1046-native-playground.md`, `1041-smart-auto-combos.md`
 <YOUR interpretation and enrichment of the feature request. Expand on what was asked, fill in logical gaps, provide concrete examples of how it would work. This section should be MORE detailed and clearer than the original request.>
 
 ### What it solves
+
 - <problem 1>
 - <problem 2>
 
 ### How it should work (high level)
+
 1. <step 1>
 2. <step 2>
 3. ...
 
 ### Affected areas
+
 - <list of codebase areas, modules, files likely affected>
 
 ## 📎 Attachments & References
@@ -141,7 +150,7 @@ Example: `1046-native-playground.md`, `1041-smart-auto-combos.md`
 
 ## 🔗 Related Ideas
 
-- <links to related _ideia/ files if any overlap found>
+- <links to related \_ideia/ files if any overlap found>
 ```
 
 #### 1.4b — If the idea file ALREADY exists, update it:
@@ -177,13 +186,13 @@ Before investing in research, quickly assess:
 
 **Verdict options:**
 
-| Verdict | When | Action |
-|---------|------|--------|
-| ✅ **VIABLE** | Good idea, enough context | Proceed to Research |
-| ❓ **NEEDS DETAIL** | Good idea, insufficient spec | Skip research, ask author |
-| ⏭️ **DEFER** | Good idea, too complex for this cycle | Catalog only, skip research |
-| ❌ **NOT FIT** | Doesn't fit the project | Explain why |
-| 🔁 **ALREADY EXISTS** | Feature already implemented | Point to existing feature |
+| Verdict               | When                                  | Action                      |
+| --------------------- | ------------------------------------- | --------------------------- |
+| ✅ **VIABLE**         | Good idea, enough context             | Proceed to Research         |
+| ❓ **NEEDS DETAIL**   | Good idea, insufficient spec          | Skip research, ask author   |
+| ⏭️ **DEFER**          | Good idea, too complex for this cycle | Catalog only, skip research |
+| ❌ **NOT FIT**        | Doesn't fit the project               | Explain why                 |
+| 🔁 **ALREADY EXISTS** | Feature already implemented           | Point to existing feature   |
 
 ### 2.2 Internet Research (for VIABLE features)
 
@@ -213,6 +222,7 @@ search_web("github <feature keyword> implementation recently updated 2026")
 **Step 3 — Read API docs and standards:**
 
 If the feature involves an external API, protocol, or standard:
+
 - Find and read the official documentation
 - Note version requirements, authentication patterns, rate limits
 
@@ -235,37 +245,44 @@ For each researched feature, create a requirements file alongside its idea file:
 
 ## 📚 Reference Implementations
 
-| # | Repository | Stars | Last Updated | Approach | Relevance |
-|---|-----------|-------|-------------|----------|-----------|
-| 1 | [repo/name](url) | ⭐ N | YYYY-MM-DD | <brief> | High/Med/Low |
-| 2 | ... | | | | |
+| #   | Repository       | Stars | Last Updated | Approach | Relevance    |
+| --- | ---------------- | ----- | ------------ | -------- | ------------ |
+| 1   | [repo/name](url) | ⭐ N  | YYYY-MM-DD   | <brief>  | High/Med/Low |
+| 2   | ...              |       |              |          |              |
 
 ### Key Patterns Found
+
 - <pattern 1 with code snippet or link>
 - <pattern 2>
 
 ## 📐 Proposed Solution Architecture
 
 ### Approach
+
 <Describe the chosen approach based on research findings>
 
 ### New Files
-| File | Purpose |
-|------|---------|
+
+| File                  | Purpose       |
+| --------------------- | ------------- |
 | `path/to/new/file.ts` | <description> |
 
 ### Modified Files
-| File | Changes |
-|------|---------|
+
+| File                       | Changes        |
+| -------------------------- | -------------- |
 | `path/to/existing/file.ts` | <what changes> |
 
 ### Database Changes
+
 - <migrations needed, if any>
 
 ### API Changes
+
 - <new/modified endpoints, if any>
 
 ### UI Changes
+
 - <new/modified pages/components, if any>
 
 ## ⚙️ Implementation Effort
@@ -298,6 +315,7 @@ For each researched feature, create a requirements file alongside its idea file:
 
 ```bash
 mkdir -p <project_root>/_ideia/viable
+mkdir -p <project_root>/_ideia/viable/need_details
 mkdir -p <project_root>/_ideia/defer
 mkdir -p <project_root>/_ideia/notfit
 ```
@@ -310,6 +328,9 @@ After classification, move EVERY idea file to its correct subdirectory:
 # ✅ VIABLE — move idea + requirements files
 mv _ideia/<NUMBER>-*.md _ideia/viable/
 mv _ideia/<NUMBER>-*.requirements.md _ideia/viable/
+
+# ❓ NEEDS DETAIL — viable but waiting for author response
+mv _ideia/<NUMBER>-*.md _ideia/viable/need_details/
 
 # ⏭️ DEFER — move idea files only
 mv _ideia/<NUMBER>-*.md _ideia/defer/
@@ -340,6 +361,7 @@ Great news — this functionality **already exists** in OmniRoute:
 **📍 Where to find it:** <exact dashboard path or settings location>
 
 **🔧 How to use it:**
+
 1. <step 1>
 2. <step 2>
 3. <step 3>
@@ -369,6 +391,7 @@ We really appreciate the detailed proposal. We've **cataloged your idea** and it
 Due to the **significant architectural impact** of this feature, we'll need to conduct thorough use-case studies and architectural analysis before we start development. This ensures we build it right and don't introduce regressions.
 
 **What happens next:**
+
 - Your idea is saved in our internal feature backlog
 - We'll conduct architecture studies when this area is prioritized
 - We'll notify you here when development begins
@@ -460,17 +483,18 @@ Present a structured report containing:
 
 #### 3.1a — Feature Summary Table
 
-| # | Issue | Title | Verdict | Location | Action |
-|---|-------|-------|---------|----------|--------|
-| 1 | #N | Title | ✅ VIABLE | `_ideia/viable/` | Issue OPEN, comment posted |
-| 2 | #N | Title | ⏭️ DEFER | `_ideia/defer/` | Issue CLOSED with explanation |
-| 3 | #N | Title | ❌ NOT FIT | `_ideia/notfit/` | Issue CLOSED with explanation |
-| 4 | #N | Title | 🔁 EXISTS | `_ideia/notfit/` | Issue CLOSED with guidance |
-| 5 | #N | Title | ❓ NEEDS DETAIL | `_ideia/viable/` | Issue OPEN, questions posted |
+| #   | Issue | Title | Verdict         | Location                      | Action                        |
+| --- | ----- | ----- | --------------- | ----------------------------- | ----------------------------- |
+| 1   | #N    | Title | ✅ VIABLE       | `_ideia/viable/`              | Issue OPEN, comment posted    |
+| 2   | #N    | Title | ⏭️ DEFER        | `_ideia/defer/`               | Issue CLOSED with explanation |
+| 3   | #N    | Title | ❌ NOT FIT      | `_ideia/notfit/`              | Issue CLOSED with explanation |
+| 4   | #N    | Title | 🔁 EXISTS       | `_ideia/notfit/`              | Issue CLOSED with guidance    |
+| 5   | #N    | Title | ❓ NEEDS DETAIL | `_ideia/viable/need_details/` | Issue OPEN, questions posted  |
 
 #### 3.1b — Viable Features Detail
 
 For each VIABLE feature, provide a brief paragraph:
+
 - What was found during research
 - The proposed approach
 - Key risks or unknowns
@@ -479,6 +503,7 @@ For each VIABLE feature, provide a brief paragraph:
 #### 3.1c — Issues Requiring Author Feedback
 
 For features marked ❓ NEEDS DETAIL, list:
+
 - What specific information is missing
 - What examples or repository references would help
 
@@ -487,6 +512,7 @@ For features marked ❓ NEEDS DETAIL, list:
 End the report with:
 
 > **Ready to proceed with implementation?**
+>
 > - Reply **"sim"** or **"yes"** to generate full implementation plans for all VIABLE features.
 > - Reply with specific issue numbers to select only certain features.
 > - Reply **"não"** or **"no"** to stop here.
@@ -513,8 +539,8 @@ For each VIABLE feature approved by the user, create:
 # Implementation Plan: <Feature Title>
 
 > Issue: #<NUMBER>
-> Idea: [_ideia/viable/<NUMBER>-title.md](../../_ideia/viable/<NUMBER>-title.md)
-> Requirements: [_ideia/viable/<NUMBER>-title.requirements.md](../../_ideia/viable/<NUMBER>-title.requirements.md)
+> Idea: [\_ideia/viable/<NUMBER>-title.md](../../_ideia/viable/<NUMBER>-title.md)
+> Requirements: [\_ideia/viable/<NUMBER>-title.requirements.md](../../_ideia/viable/<NUMBER>-title.requirements.md)
 > Branch: `release/vX.Y.Z`
 
 ## Overview
@@ -532,26 +558,31 @@ For each VIABLE feature approved by the user, create:
 ### Step 1: <Title>
 
 **Files:**
+
 - `path/to/file.ts` — <what to change>
 
 **Details:**
 <Detailed description of the change, including code patterns to follow, function signatures, etc.>
 
 ### Step 2: <Title>
+
 ...
 
 ### Step N: Tests
 
 **New test files:**
+
 - `tests/unit/<test-file>.test.mjs` — <what to test>
 
 **Test cases:**
+
 - [ ] <test case 1>
 - [ ] <test case 2>
 
 ### Step N+1: i18n
 
 **Translation keys to add:**
+
 - `<namespace>.<key>` — "<English value>"
 
 ### Step N+2: Documentation
@@ -567,10 +598,12 @@ For each VIABLE feature approved by the user, create:
 4. <Manual verification steps>
 
 ## Commit Plan
+```
+
+feat: <description> (#<NUMBER>)
 
 ```
-feat: <description> (#<NUMBER>)
-```
+
 ```
 
 ### 4.3 Present Plans for Final Approval
@@ -579,9 +612,9 @@ Present a summary of all generated plans:
 
 > **Implementation plans generated:**
 >
-> | # | Feature | Plan File | Steps | Effort |
-> |---|---------|-----------|-------|--------|
-> | 1 | <title> | `_tasks/features-vX.Y.Z/N-title.plan.md` | N steps | Medium |
+> | #   | Feature | Plan File                                | Steps   | Effort |
+> | --- | ------- | ---------------------------------------- | ------- | ------ |
+> | 1   | <title> | `_tasks/features-vX.Y.Z/N-title.plan.md` | N steps | Medium |
 >
 > Reply **"sim"** or **"yes"** to begin implementation of all features.
 > Reply with specific issue numbers to implement only certain ones.
@@ -605,43 +638,42 @@ For each approved plan, execute it step by step:
 
 ### 5.2 Respond to Authors (Update Viable Issues)
 
-For each implemented feature, **update the comment on the original issue** (which was left OPEN in Phase 2.5):
+For each implemented feature, **close the issue with a final comment**:
 
-```markdown
-## ✅ Feature Implemented!
+````markdown
+✅ **Implemented in `release/vX.Y.Z`!**
 
 Hi @<author>! Great news — your feature request has been implemented! 🎉
 
-**Branch:** `release/vX.Y.Z` (upcoming release)
+**What was done:**
 
-### What was implemented:
+- <bullet list of what was built>
 
-- <bullet list of what was done>
-
-### How to try it:
+**How to try it:**
 
 ```bash
-git fetch origin
-git checkout release/vX.Y.Z
+git fetch origin && git checkout release/vX.Y.Z
 npm install && npm run dev
 ```
+````
 
-### Next steps:
+This will be included in the upcoming **vX.Y.Z** release. Feel free to reopen if you spot any issues! 🚀
 
-1. **Test it** — Please verify it works as you expected
-2. **Want to improve it?** — Feel free to open a follow-up PR targeting `release/vX.Y.Z`
-3. **Not quite right?** — Let us know in this issue what needs to change
+````
 
-This will be included in the next release. Looking forward to your feedback! 🚀
-```
-
-Then close the issue:
 ```bash
-gh issue close <NUMBER> --repo <owner>/<repo>
+gh issue close <NUMBER> --repo <owner>/<repo> --comment "<comment above>"
+````
+
+Then **DELETE the idea file** — it has served its purpose:
+
+```bash
+# ✅ Implemented files are DELETED (not moved)
+rm _ideia/viable/<NUMBER>-<title>.md
+rm _ideia/viable/<NUMBER>-<title>.requirements.md  # if exists
 ```
 
-And move the idea file from `viable/` to indicate completion:
-- Update the idea file's Status line to: `> Status: ✅ Implemented in vX.Y.Z`
+> **Why delete?** `viable/` only holds features that still NEED to be done. Once implemented, the commit history and CHANGELOG are the source of truth. Keeping the file would be confusing.
 
 ### 5.3 Finalize & Push
 
@@ -655,19 +687,20 @@ After implementing all approved features:
 
 Present a final summary report to the user:
 
-| Issue | Title | Verdict | Action | Commit |
-|-------|-------|---------|--------|--------|
-| #N | Title | ✅ Implemented | Committed on release/vX.Y.Z | `abc1234` |
-| #N | Title | ⏭️ Deferred | Closed with thanks + cataloged in `_ideia/defer/` | — |
-| #N | Title | ❌ Not Fit | Closed with explanation, filed in `_ideia/notfit/` | — |
-| #N | Title | 🔁 Exists | Closed with guidance on existing feature location | — |
-| #N | Title | ❓ Needs Detail | Left open, questions posted | — |
+| Issue | Title | Verdict         | Action                                             | Commit    |
+| ----- | ----- | --------------- | -------------------------------------------------- | --------- |
+| #N    | Title | ✅ Implemented  | Issue closed, idea file deleted                    | `abc1234` |
+| #N    | Title | ⏭️ Deferred     | Issue closed + saved in `_ideia/defer/`            | —         |
+| #N    | Title | ❌ Not Fit      | Issue closed + saved in `_ideia/notfit/`           | —         |
+| #N    | Title | 🔁 Exists       | Issue closed + saved in `_ideia/notfit/`           | —         |
+| #N    | Title | ❓ Needs Detail | Issue OPEN, moved to `_ideia/viable/need_details/` | —         |
 
 Include:
+
 - Total features harvested
-- Total ideas cataloged (`viable/` + `defer/` + `notfit/`)
-- Total features implemented
+- Total ideas cataloged (`viable/need_details/` + `defer/` + `notfit/`)
+- Total features implemented (idea files deleted, issues closed)
 - Total features deferred
 - Total issues closed
-- Total issues left open (viable + needs detail)
+- Total issues left open (needs detail only — viable are closed after implementation)
 - Test results (pass/fail count)
