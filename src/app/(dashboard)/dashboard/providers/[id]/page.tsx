@@ -2378,26 +2378,24 @@ export default function ProviderDetailPage() {
                 : t("providerProxy")}
             </button>
           </div>
-          <div className="flex items-center gap-2">
-            {connections.length > 1 && (
-              <button
-                onClick={handleBatchTestAll}
-                disabled={batchTesting || !!retestingId}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                  batchTesting
-                    ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
-                    : "bg-bg-subtle border-border text-text-muted hover:text-text-primary hover:border-primary/40"
-                }`}
-                title={t("testAll")}
-                aria-label={t("testAll")}
-              >
-                <span className="material-symbols-outlined text-[14px]">
-                  {batchTesting ? "sync" : "play_arrow"}
-                </span>
-                {batchTesting ? t("testing") : t("testAll")}
-              </button>
-            )}
-          </div>
+          {connections.length > 1 && (
+            <button
+              onClick={handleBatchTestAll}
+              disabled={batchTesting || !!retestingId}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                batchTesting
+                  ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
+                  : "bg-bg-subtle border-border text-text-muted hover:text-text-primary hover:border-primary/40"
+              }`}
+              title={t("testAll")}
+              aria-label={t("testAll")}
+            >
+              <span className="material-symbols-outlined text-[14px]">
+                {batchTesting ? "sync" : "play_arrow"}
+              </span>
+              {batchTesting ? t("testing") : t("testAll")}
+            </button>
+          )}
           {!isCompatible ? (
             <div className="flex items-center gap-2">
               <Button size="sm" icon="add" onClick={openPrimaryAddFlow}>
