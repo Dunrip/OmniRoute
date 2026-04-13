@@ -12,7 +12,7 @@
  * User Agent string for Claude CLI requests.
  * Identifies the client as Claude CLI (external, non-browser).
  */
-export const CLAUDE_CLI_USER_AGENT = "claude-cli/2.1.2 (external, cli)";
+export const CLAUDE_CLI_USER_AGENT = "claude-cli/2.1.89 (external, cli)";
 
 /**
  * Beta headers for Claude API requests.
