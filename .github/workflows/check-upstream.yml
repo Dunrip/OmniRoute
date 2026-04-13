@@ -1,0 +1,132 @@
+name: Check Upstream Divergence
+
+on:
+  schedule:
+    # Every Monday at 09:00 UTC
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-upstream:
+    name: Check for upstream changes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/diegosouzapw/OmniRoute.git || true
+          git fetch upstream main
+
+      - name: Check for divergence
+        id: divergence
+        run: |
+          # Get the merge base (common ancestor)
+          MERGE_BASE=$(git merge-base HEAD upstream/main)
+
+          # Check if we're behind upstream
+          BEHIND=$(git rev-list --count $MERGE_BASE..upstream/main)
+          AHEAD=$(git rev-list --count upstream/main..HEAD)
+
+          echo "behind=$BEHIND" >> $GITHUB_OUTPUT
+          echo "ahead=$AHEAD" >> $GITHUB_OUTPUT
+
+          # List files that differ between our main and upstream/main
+          echo "diverged_files<<EOF" >> $GITHUB_OUTPUT
+          git diff --name-only $MERGE_BASE upstream/main >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Check for conflicts in patched areas
+        id: conflicts
+        run: |
+          # Define patched file patterns
+          PATCHED_PATTERNS=(
+            "src/lib/oauth/constants/oauth.ts"
+            "open-sse/config/providerRegistry.ts"
+            "open-sse/translator/"
+            "src/shared/constants/"
+            "tests/unit/claude-oauth-headers.test.mjs"
+            "tests/unit/translator-resp-openai-to-claude.test.mjs"
+          )
+
+          # Get upstream changes
+          UPSTREAM_CHANGES=$(git diff --name-only $MERGE_BASE upstream/main)
+
+          CONFLICT_FILES=""
+          for pattern in "${PATCHED_PATTERNS[@]}"; do
+            while IFS= read -r file; do
+              if [[ "$file" == "$pattern"* ]] || [[ "$pattern" == *"/" && "$file" == "$pattern"* ]]; then
+                CONFLICT_FILES="$CONFLICT_FILES- $file"$'\n'
+              fi
+            done <<< "$UPSTREAM_CHANGES"
+          done
+
+          if [ -z "$CONFLICT_FILES" ]; then
+            echo "has_conflicts=false" >> $GITHUB_OUTPUT
+            echo "conflict_files=" >> $GITHUB_OUTPUT
+          else
+            echo "has_conflicts=true" >> $GITHUB_OUTPUT
+            echo "conflict_files<<EOF" >> $GITHUB_OUTPUT
+            echo "$CONFLICT_FILES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create issue if upstream diverged
+        if: steps.divergence.outputs.behind > 0
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const behind = ${{ steps.divergence.outputs.behind }};
+            const ahead = ${{ steps.divergence.outputs.ahead }};
+            const hasConflicts = ${{ steps.conflicts.outputs.has_conflicts }};
+            const conflictFiles = `${{ steps.conflicts.outputs.conflict_files }}`;
+
+            let body = `## Upstream Divergence Detected\n\n`;
+            body += `**Status:**\n`;
+            body += `- Our fork is **${ahead} commits ahead** of upstream\n`;
+            body += `- Upstream is **${behind} commits ahead** of our fork\n\n`;
+
+            if (hasConflicts === 'true' && conflictFiles.trim()) {
+              body += `⚠️ **Potential Conflicts in Patched Areas:**\n`;
+              body += `Upstream has changes in files we've modified:\n`;
+              body += conflictFiles;
+              body += `\n**Action:** Review these changes and determine if they need to be merged or rebased.\n\n`;
+            } else {
+              body += `✅ **No conflicts detected** in our patched file areas.\n\n`;
+            }
+
+            body += `**Patched Areas Being Monitored:**\n`;
+            body += `- OAuth configuration (\`src/lib/oauth/constants/oauth.ts\`)\n`;
+            body += `- Provider registry (\`open-sse/config/providerRegistry.ts\`)\n`;
+            body += `- Request/response translators (\`open-sse/translator/\`)\n`;
+            body += `- Shared constants (\`src/shared/constants/\`)\n`;
+            body += `- Related tests\n\n`;
+
+            body += `**Next Steps:**\n`;
+            body += `1. Review upstream changes: https://github.com/diegosouzapw/OmniRoute/compare/main...${context.ref}\n`;
+            body += `2. Assess impact on our patches\n`;
+            body += `3. Decide: merge, rebase, or cherry-pick specific commits\n`;
+
+            // Check if an issue already exists for this week
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['upstream-sync']
+            });
+
+            if (issues.data.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `Upstream Divergence: ${behind} commits behind`,
+                body: body,
+                labels: ['upstream-sync', 'maintenance']
+              });
+            }
