@@ -1068,12 +1068,14 @@ export async function handleChatCore({
     } else {
       translatedBody = { ...body };
 
-      // Issue #199 + #618: Always disable tool name prefix in Claude passthrough.
+      // Issue #199 + #618: Disable tool name prefix in Claude passthrough ONLY.
       // The mcp_ prefix is designed for OpenAI→Claude translation to avoid
       // conflicts with Claude OAuth tools, but in the passthrough path the tools
       // are already in Claude format. Applying the prefix turns "Bash" into
       // "mcp_Bash", which Claude rejects ("No such tool available: mcp_Bash").
-      if (targetFormat === FORMATS.CLAUDE) {
+      // Only disable when source is also Claude (true passthrough), not for
+      // OpenAI→Claude translation which needs the prefix for OAuth compliance.
+      if (targetFormat === FORMATS.CLAUDE && sourceFormat === FORMATS.CLAUDE) {
         translatedBody._disableToolPrefix = true;
       }
 

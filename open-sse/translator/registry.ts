@@ -2,7 +2,8 @@ type RequestTranslator = (
   model: string,
   body: Record<string, unknown>,
   stream?: boolean,
-  credentials?: Record<string, unknown> | null
+  credentials?: Record<string, unknown> | null,
+  provider?: string | null
 ) => unknown;
 
 type ResponseTranslator = (

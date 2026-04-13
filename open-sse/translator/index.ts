@@ -152,7 +152,6 @@ export function translateRequest(
   if (targetFormat === FORMATS.OPENAI) {
     result = filterToOpenAIFormat(result);
   }
-
   // Final step: prepare request for Claude format endpoints
   // Preserve cache_control when:
   // 1. Claude passthrough mode (Claude → Claude), OR

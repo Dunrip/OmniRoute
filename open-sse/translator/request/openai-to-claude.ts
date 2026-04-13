@@ -272,7 +272,6 @@ export function openaiToClaudeRequest(model, body, stream, credentials = null, p
           : originalName.startsWith(CLAUDE_OAUTH_TOOL_PREFIX)
             ? originalName
             : CLAUDE_OAUTH_TOOL_PREFIX + originalName;
-
         // Store mapping for response translation (prefixed → original)
         if (!disableToolPrefix) {
           toolNameMap.set(toolName, originalName);
@@ -360,14 +359,8 @@ export function openaiToClaudeRequest(model, body, stream, credentials = null, p
         ];
       }
     } else {
-      result.system = [
-        claudeCodePrompt,
-        {
-          type: "text",
-          text: relocated || systemText,
-          cache_control: { type: "ephemeral", ttl: "1h" },
-        },
-      ];
+      // Sanitized text empty or no user message — identity only
+      result.system = [claudeCodePrompt];
     }
   }
 
