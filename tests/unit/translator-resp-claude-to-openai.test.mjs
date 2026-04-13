@@ -208,6 +208,47 @@ test("Claude stream: message_delta maps stop reason and usage including cache to
   assert.equal(result[0].usage.prompt_tokens_details.cache_creation_tokens, 1);
 });
 
+test("Claude stream: cache tokens from message_start survive through message_delta", () => {
+  // Real Claude API behavior: cache tokens are reported in message_start, NOT message_delta.
+  // message_delta only carries output_tokens. The translator must preserve cache data across events.
+  const state = createState();
+  claudeToOpenAIResponse(
+    {
+      type: "message_start",
+      message: {
+        id: "msg1",
+        model: "claude-3-7-sonnet",
+        usage: {
+          input_tokens: 50,
+          cache_read_input_tokens: 8000,
+          cache_creation_input_tokens: 500,
+          output_tokens: 0,
+        },
+      },
+    },
+    state
+  );
+
+  // message_delta typically only has output_tokens, no cache fields
+  const result = claudeToOpenAIResponse(
+    {
+      type: "message_delta",
+      delta: { stop_reason: "end_turn" },
+      usage: { output_tokens: 120 },
+    },
+    state
+  );
+
+  assert.equal(result[0].choices[0].finish_reason, "stop");
+  // prompt_tokens = input_tokens(50) + cache_read(8000) + cache_creation(500) = 8550
+  assert.equal(result[0].usage.prompt_tokens, 8550);
+  assert.equal(result[0].usage.completion_tokens, 120);
+  assert.equal(result[0].usage.total_tokens, 8670);
+  // Cache tokens from message_start must appear in prompt_tokens_details
+  assert.equal(result[0].usage.prompt_tokens_details.cached_tokens, 8000);
+  assert.equal(result[0].usage.prompt_tokens_details.cache_creation_tokens, 500);
+});
+
 test("Claude stream: message_stop falls back to tool_calls when tool use already happened", () => {
   const state = createState();
   claudeToOpenAIResponse(

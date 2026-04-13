@@ -21,7 +21,8 @@ export const CLAUDE_CLI_USER_AGENT = "claude-cli/2.1.2 (external, cli)";
  * - oauth-2025-04-20: OAuth 2.0 flow support
  * - interleaved-thinking-2025-05-14: Extended thinking capability
  */
-export const CLAUDE_BETA_HEADERS = "oauth-2025-04-20, interleaved-thinking-2025-05-14";
+export const CLAUDE_BETA_HEADERS =
+  "oauth-2025-04-20, interleaved-thinking-2025-05-14, context-1m-2025-08-07";
 
 /**
  * OAuth Client ID for Claude CLI.

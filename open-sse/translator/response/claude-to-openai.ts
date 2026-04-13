@@ -40,6 +40,14 @@ export function claudeToOpenAIResponse(chunk, state) {
       state.messageId = chunk.message?.id || `msg_${Date.now()}`;
       state.model = chunk.message?.model;
       state.toolCallIndex = 0;
+      // Cache and input tokens are only reported in message_start, not message_delta.
+      // Save them in dedicated state fields so message_delta can use them later.
+      if (chunk.message?.usage) {
+        const u = chunk.message.usage;
+        state._inputTokens = u.input_tokens || 0;
+        state._cacheReadTokens = u.cache_read_input_tokens || 0;
+        state._cacheCreationTokens = u.cache_creation_input_tokens || 0;
+      }
       results.push(createChunk(state, { role: "assistant" }));
       break;
     }
@@ -113,20 +121,15 @@ export function claudeToOpenAIResponse(chunk, state) {
 
     case "message_delta": {
       // Extract usage from message_delta event (Claude native format)
-      // Normalize to OpenAI format (prompt_tokens/completion_tokens) for consistent logging
+      // message_delta only carries output_tokens; input and cache tokens were in message_start.
+      // Use saved state._inputTokens / state._cacheReadTokens / state._cacheCreationTokens.
       if (chunk.usage && typeof chunk.usage === "object") {
-        const inputTokens =
-          typeof chunk.usage.input_tokens === "number" ? chunk.usage.input_tokens : 0;
+        const inputTokens = state._inputTokens || chunk.usage.input_tokens || 0;
         const outputTokens =
           typeof chunk.usage.output_tokens === "number" ? chunk.usage.output_tokens : 0;
-        const cacheReadTokens =
-          typeof chunk.usage.cache_read_input_tokens === "number"
-            ? chunk.usage.cache_read_input_tokens
-            : 0;
+        const cacheReadTokens = state._cacheReadTokens || chunk.usage.cache_read_input_tokens || 0;
         const cacheCreationTokens =
-          typeof chunk.usage.cache_creation_input_tokens === "number"
-            ? chunk.usage.cache_creation_input_tokens
-            : 0;
+          state._cacheCreationTokens || chunk.usage.cache_creation_input_tokens || 0;
 
         // Use OpenAI format keys for consistent logging in stream.js
         state.usage = {
@@ -173,11 +176,13 @@ export function claudeToOpenAIResponse(chunk, state) {
         };
 
         // Include usage in final chunk if available
+        // Use saved cache tokens from message_start (they're not in message_delta)
         if (state.usage && typeof state.usage === "object") {
           const inputTokens = state.usage.input_tokens || 0;
           const outputTokens = state.usage.output_tokens || 0;
-          const cachedTokens = state.usage.cache_read_input_tokens || 0;
-          const cacheCreationTokens = state.usage.cache_creation_input_tokens || 0;
+          const cachedTokens = state._cacheReadTokens || state.usage.cache_read_input_tokens || 0;
+          const cacheCreationTokens =
+            state._cacheCreationTokens || state.usage.cache_creation_input_tokens || 0;
 
           // prompt_tokens = input_tokens + cache_read + cache_creation (all prompt-side tokens)
           // completion_tokens = output_tokens
@@ -214,16 +219,30 @@ export function claudeToOpenAIResponse(chunk, state) {
       if (!state.finishReasonSent) {
         const finishReason =
           state.finishReason || (state.toolCalls?.size > 0 ? "tool_calls" : "stop");
-        const usageObj =
-          state.usage && typeof state.usage === "object"
-            ? {
-                usage: {
-                  prompt_tokens: state.usage.input_tokens || 0,
-                  completion_tokens: state.usage.output_tokens || 0,
-                  total_tokens: (state.usage.input_tokens || 0) + (state.usage.output_tokens || 0),
-                },
-              }
-            : {};
+        let usageObj = {};
+        if (state.usage && typeof state.usage === "object") {
+          const inputTokens = state.usage.input_tokens || 0;
+          const outputTokens = state.usage.output_tokens || 0;
+          const cachedTokens = state._cacheReadTokens || state.usage.cache_read_input_tokens || 0;
+          const cacheCreationTokens =
+            state._cacheCreationTokens || state.usage.cache_creation_input_tokens || 0;
+          const promptTokens = inputTokens + cachedTokens + cacheCreationTokens;
+          const usage: OpenAIUsage = {
+            prompt_tokens: promptTokens,
+            completion_tokens: outputTokens,
+            total_tokens: promptTokens + outputTokens,
+          };
+          if (cachedTokens > 0 || cacheCreationTokens > 0) {
+            usage.prompt_tokens_details = {};
+            if (cachedTokens > 0) {
+              usage.prompt_tokens_details.cached_tokens = cachedTokens;
+            }
+            if (cacheCreationTokens > 0) {
+              usage.prompt_tokens_details.cache_creation_tokens = cacheCreationTokens;
+            }
+          }
+          usageObj = { usage };
+        }
         results.push({
           id: `chatcmpl-${state.messageId}`,
           object: "chat.completion.chunk",

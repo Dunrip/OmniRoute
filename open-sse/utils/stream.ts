@@ -599,9 +599,12 @@ export function createSSEStream(options: StreamOptions = {}) {
             }
           }
 
-          // Extract usage
+          // Extract usage — merge with existing to preserve cache fields from earlier events.
+          // Claude splits usage across message_start (input/cache) and message_delta (output).
           const extracted = extractUsage(parsed);
-          if (extracted) state.usage = extracted; // Keep original usage for logging
+          if (extracted) {
+            state.usage = state.usage ? { ...state.usage, ...extracted } : extracted;
+          }
 
           // Translate: targetFormat -> openai -> sourceFormat
           const translated = translateResponse(targetFormat, sourceFormat, parsed, state);
