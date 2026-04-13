@@ -625,7 +625,7 @@ test("chatCore sets Claude tool prefix disabling, strips empty Anthropic text bl
     credentials: { apiKey: "claude-key", providerSpecificData: {} },
     body: {
       model: "ignored-client-model",
-      _toolNameMap: new Map([["proxy_Bash", "Bash"]]),
+      _toolNameMap: new Map([["mcp_Bash", "Bash"]]),
       messages: [
         {
           role: "user",
@@ -651,7 +651,7 @@ test("chatCore sets Claude tool prefix disabling, strips empty Anthropic text bl
 
   assert.equal(call.body.model, "claude-sonnet-4-6");
   assert.equal(call.body.tools[0].name, "Bash");
-  assert.equal(call.body.tools[0].name.startsWith("proxy_"), false);
+  assert.equal(call.body.tools[0].name.startsWith("mcp_"), false);
   assert.equal(call.body._toolNameMap, undefined);
   assert.equal(call.body._disableToolPrefix, undefined);
   assert.deepEqual(
@@ -689,7 +689,7 @@ test("chatCore restores prefixed Claude passthrough tool names in upstream respo
             {
               type: "tool_use",
               id: "toolu_1",
-              name: "proxy_Bash",
+              name: "mcp_Bash",
               input: { command: "ls" },
             },
           ],

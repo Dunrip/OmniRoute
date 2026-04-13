@@ -10,7 +10,7 @@ const { FORMATS } = await import("../../open-sse/translator/formats.ts");
 function createState() {
   return {
     toolCalls: new Map(),
-    toolNameMap: new Map([["proxy_read_file", "read_file"]]),
+    toolNameMap: new Map([["mcp_read_file", "read_file"]]),
   };
 }
 
@@ -25,7 +25,7 @@ test("Claude non-stream: text, thinking and tool_use become OpenAI assistant mes
         {
           type: "tool_use",
           id: "tool_1",
-          name: "proxy_read_file",
+          name: "mcp_read_file",
           input: { path: "/tmp/a" },
         },
       ],
@@ -37,7 +37,7 @@ test("Claude non-stream: text, thinking and tool_use become OpenAI assistant mes
     },
     FORMATS.CLAUDE,
     FORMATS.OPENAI,
-    new Map([["proxy_read_file", "read_file"]])
+    new Map([["mcp_read_file", "read_file"]])
   );
 
   assert.equal(result.id, "chatcmpl-msg_123");
@@ -152,7 +152,7 @@ test("Claude stream: tool_use start reverses prefixed tool names and streams arg
     {
       type: "content_block_start",
       index: 2,
-      content_block: { type: "tool_use", id: "tool1", name: "proxy_read_file" },
+      content_block: { type: "tool_use", id: "tool1", name: "mcp_read_file" },
     },
     state
   );
@@ -218,7 +218,7 @@ test("Claude stream: message_stop falls back to tool_calls when tool use already
     {
       type: "content_block_start",
       index: 2,
-      content_block: { type: "tool_use", id: "tool1", name: "proxy_read_file" },
+      content_block: { type: "tool_use", id: "tool1", name: "mcp_read_file" },
     },
     state
   );

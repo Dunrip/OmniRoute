@@ -92,7 +92,7 @@ test("OpenAI stream: tool calls strip Claude OAuth prefix and keep cache usage",
                 id: "call_1",
                 type: "function",
                 function: {
-                  name: "proxy_read_file",
+                  name: "mcp_read_file",
                   arguments: '{"path":',
                 },
               },
@@ -202,4 +202,62 @@ test("OpenAI non-stream: chat completion becomes Claude message with thinking an
 
 test("OpenAI stream: null chunk is ignored", () => {
   assert.equal(openaiToClaudeResponse(null, createState()), null);
+});
+
+test("Non-stream: mcp_ prefix stripped from Claude tool_use via toolNameMap when translating to OpenAI", () => {
+  const toolNameMap = new Map([["mcp_read_file", "read_file"]]);
+  const result = translateNonStreamingResponse(
+    {
+      id: "msg_abc",
+      type: "message",
+      role: "assistant",
+      model: "claude-sonnet-4-6",
+      content: [
+        {
+          type: "tool_use",
+          id: "toolu_1",
+          name: "mcp_read_file",
+          input: { path: "/tmp/a" },
+        },
+      ],
+      stop_reason: "tool_use",
+      usage: { input_tokens: 5, output_tokens: 3 },
+    },
+    FORMATS.CLAUDE,
+    FORMATS.OPENAI,
+    toolNameMap
+  );
+
+  assert.equal(result.choices[0].message.tool_calls[0].function.name, "read_file");
+  assert.equal(result.choices[0].finish_reason, "tool_calls");
+  assert.deepEqual(
+    result.choices[0].message.tool_calls[0].function.arguments,
+    JSON.stringify({ path: "/tmp/a" })
+  );
+});
+
+test("Non-stream: mcp_ name is preserved as-is when no toolNameMap provided", () => {
+  const result = translateNonStreamingResponse(
+    {
+      id: "msg_def",
+      type: "message",
+      role: "assistant",
+      model: "claude-sonnet-4-6",
+      content: [
+        {
+          type: "tool_use",
+          id: "toolu_2",
+          name: "mcp_read_file",
+          input: { path: "/tmp/b" },
+        },
+      ],
+      stop_reason: "tool_use",
+      usage: { input_tokens: 4, output_tokens: 2 },
+    },
+    FORMATS.CLAUDE,
+    FORMATS.OPENAI
+  );
+
+  // Without a toolNameMap the name falls through unchanged
+  assert.equal(result.choices[0].message.tool_calls[0].function.name, "mcp_read_file");
 });

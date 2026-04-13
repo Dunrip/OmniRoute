@@ -608,3 +608,91 @@ test("BaseExecutor.execute propagates aborted requests through the merged signal
     globalThis.fetch = originalFetch;
   }
 });
+
+test("DefaultExecutor.buildUrl applies ?beta=true only to Claude provider", () => {
+  const claude = new DefaultExecutor("claude");
+  const openai = new DefaultExecutor("openai");
+  const gemini = new DefaultExecutor("gemini");
+  const anthropicCompat = new DefaultExecutor("anthropic-compatible-test");
+  const openaiCompat = new DefaultExecutor("openai-compatible-test");
+
+  // Claude MUST have ?beta=true
+  const claudeUrl = claude.buildUrl("claude-sonnet-4", true);
+  assert.match(claudeUrl, /\?beta=true$/);
+  assert.equal(claudeUrl, `${PROVIDERS.claude.baseUrl}?beta=true`);
+
+  // OpenAI MUST NOT have ?beta=true
+  const openaiUrl = openai.buildUrl("gpt-4.1", true);
+  assert.equal(openaiUrl.includes("?beta=true"), false);
+  assert.equal(openaiUrl, PROVIDERS.openai.baseUrl);
+
+  // Gemini MUST NOT have ?beta=true
+  const geminiUrl = gemini.buildUrl("gemini-2.5-flash", true);
+  assert.equal(geminiUrl.includes("?beta=true"), false);
+
+  // Anthropic-compatible MUST NOT have ?beta=true (uses /messages without suffix)
+  const anthropicUrl = anthropicCompat.buildUrl("claude-sonnet-4", true, 0, {
+    providerSpecificData: { baseUrl: "https://anthropic.example/v1/" },
+  });
+  assert.equal(anthropicUrl, "https://anthropic.example/v1/messages");
+  assert.equal(anthropicUrl.includes("?beta=true"), false);
+
+  // OpenAI-compatible MUST NOT have ?beta=true
+  const openaiCompatUrl = openaiCompat.buildUrl("gpt-4.1", true, 0, {
+    providerSpecificData: { baseUrl: "https://proxy.example/v1/" },
+  });
+  assert.equal(openaiCompatUrl, "https://proxy.example/v1/chat/completions");
+  assert.equal(openaiCompatUrl.includes("?beta=true"), false);
+});
+
+test("DefaultExecutor.buildUrl applies ?beta=true to other beta-enabled providers", () => {
+  const glm = new DefaultExecutor("glm");
+  const minimax = new DefaultExecutor("minimax");
+  const minimaxCn = new DefaultExecutor("minimax-cn");
+  const bailian = new DefaultExecutor("bailian-coding-plan");
+
+  // GLM should have ?beta=true (from registry urlSuffix)
+  const glmUrl = glm.buildUrl("glm-4-plus", true);
+  assert.match(glmUrl, /\?beta=true$/);
+
+  // Minimax should have ?beta=true (from registry urlSuffix)
+  const minimaxUrl = minimax.buildUrl("minimax-01", true);
+  assert.match(minimaxUrl, /\?beta=true$/);
+
+  // Minimax-CN should have ?beta=true (from registry urlSuffix)
+  const minimaxCnUrl = minimaxCn.buildUrl("minimax-01", true);
+  assert.match(minimaxCnUrl, /\?beta=true$/);
+
+  // Bailian should have ?beta=true (normalized in buildUrl)
+  const bailianUrl = bailian.buildUrl("qwen3-coder-plus", true, 0, {
+    providerSpecificData: {
+      baseUrl: "https://coding-intl.dashscope.aliyuncs.com/apps/anthropic/v1",
+    },
+  });
+  assert.match(bailianUrl, /\?beta=true$/);
+});
+
+test("DefaultExecutor.buildUrl does not duplicate ?beta=true on repeated calls", () => {
+  const claude = new DefaultExecutor("claude");
+  const bailian = new DefaultExecutor("bailian-coding-plan");
+
+  // Claude should not duplicate ?beta=true
+  const claudeUrl1 = claude.buildUrl("claude-sonnet-4", true);
+  const claudeUrl2 = claude.buildUrl("claude-sonnet-4", true);
+  assert.equal(claudeUrl1, claudeUrl2);
+  assert.equal((claudeUrl1.match(/\?beta=true/g) || []).length, 1);
+
+  // Bailian should not duplicate ?beta=true
+  const bailianUrl1 = bailian.buildUrl("qwen3-coder-plus", true, 0, {
+    providerSpecificData: {
+      baseUrl: "https://coding-intl.dashscope.aliyuncs.com/apps/anthropic/v1",
+    },
+  });
+  const bailianUrl2 = bailian.buildUrl("qwen3-coder-plus", true, 0, {
+    providerSpecificData: {
+      baseUrl: "https://coding-intl.dashscope.aliyuncs.com/apps/anthropic/v1",
+    },
+  });
+  assert.equal(bailianUrl1, bailianUrl2);
+  assert.equal((bailianUrl1.match(/\?beta=true/g) || []).length, 1);
+});
