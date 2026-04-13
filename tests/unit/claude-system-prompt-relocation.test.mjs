@@ -28,6 +28,22 @@ describe("Claude OAuth system prompt relocation", () => {
     );
   });
 
+  it("OAuth Claude: stable preamble messages injected with cache_control", () => {
+    const body = makeBody("Custom system instructions for the agent.");
+    const result = openaiToClaudeRequest(model, body, false, oauthCreds, "claude");
+    // First two messages should be preamble user + assistant ack
+    assert.equal(result.messages[0].role, "user", "first message should be preamble user");
+    assert.equal(result.messages[1].role, "assistant", "second message should be preamble ack");
+    assert.equal(result.messages[1].content[0].text, "Understood.", "ack message content");
+    // Preamble should have cache_control
+    const preambleBlock = result.messages[0].content[0];
+    assert.ok(preambleBlock.cache_control, "preamble should have cache_control");
+    assert.ok(
+      preambleBlock.text.includes("Custom system instructions"),
+      "preamble has relocated text"
+    );
+  });
+
   it("OAuth Claude: relocated text prepended to first user message", () => {
     const body = makeBody("Custom system instructions for the agent.");
     const result = openaiToClaudeRequest(model, body, false, oauthCreds, "claude");

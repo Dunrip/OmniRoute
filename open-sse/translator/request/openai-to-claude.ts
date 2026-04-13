@@ -345,22 +345,32 @@ export function openaiToClaudeRequest(model, body, stream, credentials = null, p
       result.system = [claudeCodePrompt];
     }
   } else {
-    // OAuth Claude: relocate non-identity system text to first user message
+    // OAuth Claude: relocate non-identity system text out of system[]
+    // Use a stable synthetic preamble message with cache_control instead of
+    // merging into the dynamic first user message (which breaks Anthropic's
+    // prefix-based prompt caching — every turn would create a new cache entry).
     const relocated = sanitizeRelocatedClaudeSystemText(systemText);
-    const firstUser = result.messages.find((msg) => msg.role === "user");
-    if (firstUser && relocated) {
-      result.system = [claudeCodePrompt];
-      if (Array.isArray(firstUser.content)) {
-        firstUser.content = [{ type: "text", text: relocated }, ...firstUser.content];
-      } else {
-        firstUser.content = [
-          { type: "text", text: relocated },
-          { type: "text", text: firstUser.content },
-        ];
-      }
-    } else {
-      // Sanitized text empty or no user message — identity only
-      result.system = [claudeCodePrompt];
+    result.system = [claudeCodePrompt];
+    if (relocated) {
+      // Inject as a stable user/assistant preamble at the start of messages.
+      // This stays identical across turns → Anthropic caches it as part of
+      // the stable prefix (system + tools + preamble).
+      // cache_control on the preamble block marks the end of the stable prefix.
+      const preambleUser = {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: relocated,
+            cache_control: { type: "ephemeral" },
+          },
+        ],
+      };
+      const preambleAck = {
+        role: "assistant",
+        content: [{ type: "text", text: "Understood." }],
+      };
+      result.messages = [preambleUser, preambleAck, ...result.messages];
     }
   }
 
