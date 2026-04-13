@@ -82,8 +82,24 @@ export function normalizeContentToString(content: string | unknown[] | null | un
   return "";
 }
 
+// Sanitize system text for Claude OAuth relocation
+function sanitizeRelocatedClaudeSystemText(text) {
+  if (!text) return text;
+  const paragraphs = text.split(/\n\s*\n/);
+  const filtered = paragraphs
+    .filter((p) => !/github\.com\/anomalyco\/opencode|opencode\.ai\/docs/i.test(p))
+    .map((p) => {
+      const lines = p.split("\n").filter((line) => !/opencode/i.test(line));
+      return lines.join("\n");
+    })
+    .map((p) => p.replace(/OpenCode/g, "the assistant"))
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+  return filtered.join("\n\n");
+}
+
 // Convert OpenAI request to Claude format
-export function openaiToClaudeRequest(model, body, stream) {
+export function openaiToClaudeRequest(model, body, stream, credentials = null, provider = null) {
   // Check if tool prefix should be disabled (configured per-provider or global)
   const disableToolPrefix = body?._disableToolPrefix === true;
 
@@ -316,15 +332,43 @@ export function openaiToClaudeRequest(model, body, stream) {
 
   // System with Claude Code prompt and cache_control
   const claudeCodePrompt = { type: "text", text: CLAUDE_SYSTEM_PROMPT };
+  const isClaudeOAuth = provider === "claude" && credentials?.accessToken && !credentials?.apiKey;
+  const systemText = systemParts.length > 0 ? systemParts.join("\n") : "";
 
-  if (systemParts.length > 0) {
-    const systemText = systemParts.join("\n");
-    result.system = [
-      claudeCodePrompt,
-      { type: "text", text: systemText, cache_control: { type: "ephemeral", ttl: "1h" } },
-    ];
+  if (!isClaudeOAuth || !systemText) {
+    // Non-OAuth or no system text: standard behavior
+    if (systemText) {
+      result.system = [
+        claudeCodePrompt,
+        { type: "text", text: systemText, cache_control: { type: "ephemeral", ttl: "1h" } },
+      ];
+    } else {
+      result.system = [claudeCodePrompt];
+    }
   } else {
-    result.system = [claudeCodePrompt];
+    // OAuth Claude: relocate non-identity system text to first user message
+    const relocated = sanitizeRelocatedClaudeSystemText(systemText);
+    const firstUser = result.messages.find((msg) => msg.role === "user");
+    if (firstUser && relocated) {
+      result.system = [claudeCodePrompt];
+      if (Array.isArray(firstUser.content)) {
+        firstUser.content = [{ type: "text", text: relocated }, ...firstUser.content];
+      } else {
+        firstUser.content = [
+          { type: "text", text: relocated },
+          { type: "text", text: firstUser.content },
+        ];
+      }
+    } else {
+      result.system = [
+        claudeCodePrompt,
+        {
+          type: "text",
+          text: relocated || systemText,
+          cache_control: { type: "ephemeral", ttl: "1h" },
+        },
+      ];
+    }
   }
 
   // Thinking configuration

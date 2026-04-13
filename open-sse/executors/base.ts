@@ -333,6 +333,15 @@ export class BaseExecutor {
 
         mergeUpstreamExtraHeaders(finalHeaders, upstreamExtraHeaders);
 
+        // Delete x-api-key for Claude OAuth (Bearer token only)
+        if (
+          this.provider === "claude" &&
+          activeCredentials?.accessToken &&
+          !activeCredentials?.apiKey
+        ) {
+          delete finalHeaders["x-api-key"];
+        }
+
         const fetchOptions: RequestInit = {
           method: "POST",
           headers: finalHeaders,
