@@ -1,6 +1,7 @@
 import { getUpstreamTimeoutConfig } from "@/shared/utils/runtimeTimeouts";
 import { loadProviderCredentials } from "./credentialLoader.ts";
 import { generateLegacyProviders } from "./providerRegistry.ts";
+import { CLAUDE_TOKEN_ENDPOINT, CLAUDE_AUTHORIZE_ENDPOINT } from "@/shared/constants/claudeAuth";
 
 const upstreamTimeouts = getUpstreamTimeoutConfig(process.env, (message) => {
   console.warn(`[open-sse] ${message}`);
@@ -40,8 +41,8 @@ export const OAUTH_ENDPOINTS = {
     auth: "https://auth.openai.com/oauth/authorize",
   },
   anthropic: {
-    token: "https://console.anthropic.com/v1/oauth/token",
-    auth: "https://console.anthropic.com/v1/oauth/authorize",
+    token: CLAUDE_TOKEN_ENDPOINT,
+    auth: CLAUDE_AUTHORIZE_ENDPOINT,
   },
   qwen: {
     token: "https://chat.qwen.ai/api/v1/oauth2/token", // From CLIProxyAPI

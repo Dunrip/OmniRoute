@@ -1,3 +1,11 @@
+import {
+  CLAUDE_OAUTH_CLIENT_ID,
+  CLAUDE_AUTHORIZE_ENDPOINT,
+  CLAUDE_TOKEN_ENDPOINT,
+  CLAUDE_REDIRECT_URI,
+  CLAUDE_OAUTH_SCOPES,
+} from "@/shared/constants/claudeAuth";
+
 /**
  * OAuth Configuration Constants
  *
@@ -9,18 +17,11 @@
 
 // Claude OAuth Configuration (Authorization Code Flow with PKCE)
 export const CLAUDE_CONFIG = {
-  clientId: process.env.CLAUDE_OAUTH_CLIENT_ID || "",
-  authorizeUrl: "https://claude.ai/oauth/authorize",
-  tokenUrl: "https://console.anthropic.com/v1/oauth/token",
-  redirectUri:
-    process.env.CLAUDE_CODE_REDIRECT_URI || "https://platform.claude.com/oauth/code/callback",
-  scopes: [
-    "org:create_api_key",
-    "user:profile",
-    "user:inference",
-    "user:sessions:claude_code",
-    "user:mcp_servers",
-  ],
+  clientId: process.env.CLAUDE_OAUTH_CLIENT_ID || CLAUDE_OAUTH_CLIENT_ID,
+  authorizeUrl: CLAUDE_AUTHORIZE_ENDPOINT,
+  tokenUrl: CLAUDE_TOKEN_ENDPOINT,
+  redirectUri: process.env.CLAUDE_CODE_REDIRECT_URI || CLAUDE_REDIRECT_URI,
+  scopes: CLAUDE_OAUTH_SCOPES,
   codeChallengeMethod: "S256",
 };
 

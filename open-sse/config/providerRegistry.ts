@@ -7,6 +7,12 @@
  */
 
 import { platform, arch } from "os";
+import {
+  CLAUDE_OAUTH_CLIENT_ID,
+  CLAUDE_TOKEN_ENDPOINT,
+  CLAUDE_CLI_USER_AGENT,
+  CLAUDE_BETA_HEADERS,
+} from "@/shared/constants/claudeAuth";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -240,10 +246,9 @@ export const REGISTRY: Record<string, RegistryEntry> = {
     defaultContextLength: 200000,
     headers: {
       "Anthropic-Version": "2023-06-01",
-      "Anthropic-Beta":
-        "claude-code-20250219,oauth-2025-04-20,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14,context-management-2025-06-27,prompt-caching-scope-2026-01-05",
+      "Anthropic-Beta": `claude-code-20250219,${CLAUDE_BETA_HEADERS},fine-grained-tool-streaming-2025-05-14,context-management-2025-06-27,prompt-caching-scope-2026-01-05`,
       "Anthropic-Dangerous-Direct-Browser-Access": "true",
-      "User-Agent": "claude-cli/2.1.63 (external, cli)",
+      "User-Agent": CLAUDE_CLI_USER_AGENT,
       "X-App": "cli",
       "X-Stainless-Helper-Method": "stream",
       "X-Stainless-Retry-Count": "0",
@@ -257,8 +262,8 @@ export const REGISTRY: Record<string, RegistryEntry> = {
     },
     oauth: {
       clientIdEnv: "CLAUDE_OAUTH_CLIENT_ID",
-      clientIdDefault: "",
-      tokenUrl: "https://console.anthropic.com/v1/oauth/token",
+      clientIdDefault: CLAUDE_OAUTH_CLIENT_ID,
+      tokenUrl: CLAUDE_TOKEN_ENDPOINT,
     },
     models: [
       { id: "claude-opus-4-6", name: "Claude Opus 4.6" },
