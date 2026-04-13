@@ -128,7 +128,7 @@ export function translateNonStreamingResponse(
             ? itemObj.arguments
             : JSON.stringify(itemObj.arguments || {});
         const rawName = toString(itemObj.name);
-        // Strip Claude OAuth proxy_ prefix using toolNameMap
+        // Strip Claude OAuth mcp_ prefix using toolNameMap
         const resolvedName = toolNameMap?.get(rawName) ?? rawName;
         toolCalls.push({
           id: callId,

@@ -1069,10 +1069,10 @@ export async function handleChatCore({
       translatedBody = { ...body };
 
       // Issue #199 + #618: Always disable tool name prefix in Claude passthrough.
-      // The proxy_ prefix was designed for OpenAI→Claude translation to avoid
+      // The mcp_ prefix is designed for OpenAI→Claude translation to avoid
       // conflicts with Claude OAuth tools, but in the passthrough path the tools
       // are already in Claude format. Applying the prefix turns "Bash" into
-      // "proxy_Bash", which Claude rejects ("No such tool available: proxy_Bash").
+      // "mcp_Bash", which Claude rejects ("No such tool available: mcp_Bash").
       if (targetFormat === FORMATS.CLAUDE) {
         translatedBody._disableToolPrefix = true;
       }
@@ -2187,7 +2187,7 @@ export async function handleChatCore({
     }
 
     // Translate response to client's expected format (usually OpenAI)
-    // Pass toolNameMap so Claude OAuth proxy_ prefix is stripped in tool_use blocks (#605)
+    // Pass toolNameMap so Claude OAuth mcp_ prefix is stripped in tool_use blocks (#605)
     let translatedResponse = needsTranslation(targetFormat, clientResponseFormat)
       ? translateNonStreamingResponse(
           responseBody,

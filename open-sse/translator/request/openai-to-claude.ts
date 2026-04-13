@@ -7,7 +7,7 @@ import { DEFAULT_THINKING_CLAUDE_SIGNATURE } from "../../config/defaultThinkingS
 
 // Prefix for Claude OAuth tool names to avoid conflicts
 // Can be disabled per-request via body._disableToolPrefix = true
-export const CLAUDE_OAUTH_TOOL_PREFIX = "proxy_";
+export const CLAUDE_OAUTH_TOOL_PREFIX = "mcp_";
 const CLAUDE_TOOL_CHOICE_REQUIRED = "an" + "y";
 
 type ClaudeContentBlock = Record<string, unknown>;
@@ -251,7 +251,11 @@ export function openaiToClaudeRequest(model, body, stream) {
 
         // Claude OAuth requires prefixed tool names to avoid conflicts
         // When prefix is disabled (non-Claude backends), use original name
-        const toolName = disableToolPrefix ? originalName : CLAUDE_OAUTH_TOOL_PREFIX + originalName;
+        const toolName = disableToolPrefix
+          ? originalName
+          : originalName.startsWith(CLAUDE_OAUTH_TOOL_PREFIX)
+            ? originalName
+            : CLAUDE_OAUTH_TOOL_PREFIX + originalName;
 
         // Store mapping for response translation (prefixed → original)
         if (!disableToolPrefix) {
@@ -470,7 +474,11 @@ function getContentBlocksFromMessage(msg, toolNameMap = new Map(), disableToolPr
           if (!fnName || !fnName.trim()) continue;
 
           // Apply prefix to tool name (skip if disabled)
-          const toolName = disableToolPrefix ? fnName : CLAUDE_OAUTH_TOOL_PREFIX + fnName;
+          const toolName = disableToolPrefix
+            ? fnName
+            : fnName.startsWith(CLAUDE_OAUTH_TOOL_PREFIX)
+              ? fnName
+              : CLAUDE_OAUTH_TOOL_PREFIX + fnName;
           blocks.push({
             type: "tool_use",
             id: sanitizeToolId(tc.id),
@@ -495,7 +503,8 @@ function convertOpenAIToolChoice(choice) {
     }
     // Map OpenAI string types to Claude equivalents
     if (choice.type === "auto" || choice.type === "none") return { type: "auto" };
-    if (choice.type === "required" || choice.type === "any") return { type: CLAUDE_TOOL_CHOICE_REQUIRED };
+    if (choice.type === "required" || choice.type === "any")
+      return { type: CLAUDE_TOOL_CHOICE_REQUIRED };
     // If type is "tool" already (Claude-native), pass through
     if (choice.type === "tool" && choice.name) return choice;
     // Fallback: unknown object type — default to auto to avoid 400 errors
