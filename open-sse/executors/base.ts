@@ -289,18 +289,14 @@ export class BaseExecutor {
       const headers = this.buildHeaders(activeCredentials, stream);
       applyConfiguredUserAgent(headers, activeCredentials?.providerSpecificData);
 
-      // Append 1M context beta header when [1m] suffix was used.
-      // Anthropic supports 1M context on Opus 4.x, Sonnet 4.x, and
-      // Haiku 4.5+. Subscription tier still gates access at the API
-      // (Pro tier returns 400 "long context beta is not yet available
-      // for this subscription"; Max tier accepts it).
+      // Append 1M context beta header when [1m] suffix was used
+      // Only supported for specific Claude models per Anthropic docs
       if (extendedContext) {
         const EXTENDED_CONTEXT_MODELS = [
           "claude-opus-4-6",
           "claude-sonnet-4-6",
           "claude-sonnet-4-5",
           "claude-sonnet-4",
-          "claude-haiku-4-5",
         ];
         const baseModel = model.replace(/-\d{8}$/, "");
         if (
