@@ -22,10 +22,13 @@ export const CLAUDE_CLI_USER_AGENT = "claude-cli/2.1.89 (external, cli)";
  * - interleaved-thinking-2025-05-14: Extended thinking capability
  *
  * NOTE: context-1m-2025-08-07 is intentionally NOT here. The 1M context
- * beta is per-model (Sonnet/Opus 4.x only) and per-subscription, so
- * sending it on every request fails Haiku and Pro-tier accounts. It is
- * added conditionally in open-sse/executors/base.ts when the [1m] suffix
- * is used on a whitelisted model.
+ * beta is gated by Anthropic per-subscription — Pro returns
+ * "[400]: The long context beta is not yet available for this
+ * subscription"; Max accepts it. All Claude 4.x models (Opus, Sonnet,
+ * Haiku) support 1M context — the limitation is account tier, not
+ * model capability. The beta is added conditionally in
+ * open-sse/executors/base.ts when the [1m] suffix is used on a
+ * whitelisted 4.x model.
  */
 export const CLAUDE_BETA_HEADERS = "oauth-2025-04-20, interleaved-thinking-2025-05-14";
 
