@@ -24,6 +24,8 @@ export interface RegistryModel {
   unsupportedParams?: readonly string[];
   /** Maximum context window in tokens */
   contextLength?: number;
+  /** Maximum output tokens */
+  maxOutputTokens?: number;
 }
 
 // Reasoning models reject temperature, top_p, penalties, logprobs, n.
@@ -75,6 +77,8 @@ export interface RegistryEntry {
   passthroughModels?: boolean;
   /** Default context window for all models in this provider (can be overridden per-model) */
   defaultContextLength?: number;
+  /** Default max output tokens for all models in this provider */
+  defaultMaxOutputTokens?: number;
 }
 
 interface LegacyProvider {
@@ -101,6 +105,8 @@ const KIMI_CODING_SHARED = {
     "Anthropic-Version": "2023-06-01",
     "Anthropic-Beta": "claude-code-20250219,interleaved-thinking-2025-05-14",
   },
+  defaultContextLength: 256000,
+  defaultMaxOutputTokens: 32768,
   models: [
     { id: "kimi-k2.5", name: "Kimi K2.5" },
     { id: "kimi-k2.5-thinking", name: "Kimi K2.5 Thinking" },
@@ -244,6 +250,7 @@ export const REGISTRY: Record<string, RegistryEntry> = {
     authType: "oauth",
     authHeader: "x-api-key",
     defaultContextLength: 200000,
+    defaultMaxOutputTokens: 8192,
     headers: {
       "Anthropic-Version": "2023-06-01",
       "Anthropic-Beta": `claude-code-20250219,${CLAUDE_BETA_HEADERS},fine-grained-tool-streaming-2025-05-14,context-management-2025-06-27,prompt-caching-scope-2026-01-05`,
@@ -266,8 +273,18 @@ export const REGISTRY: Record<string, RegistryEntry> = {
       tokenUrl: CLAUDE_TOKEN_ENDPOINT,
     },
     models: [
-      { id: "claude-opus-4-6", name: "Claude Opus 4.6" },
-      { id: "claude-sonnet-4-6", name: "Claude 4.6 Sonnet" },
+      {
+        id: "claude-opus-4-6",
+        name: "Claude Opus 4.6",
+        contextLength: 1000000,
+        maxOutputTokens: 128000,
+      },
+      {
+        id: "claude-sonnet-4-6",
+        name: "Claude 4.6 Sonnet",
+        contextLength: 1000000,
+        maxOutputTokens: 64000,
+      },
       { id: "claude-opus-4-5-20251101", name: "Claude 4.5 Opus" },
       { id: "claude-sonnet-4-5-20250929", name: "Claude 4.5 Sonnet" },
       { id: "claude-haiku-4-5-20251001", name: "Claude 4.5 Haiku" },
@@ -338,6 +355,7 @@ export const REGISTRY: Record<string, RegistryEntry> = {
     authType: "oauth",
     authHeader: "bearer",
     defaultContextLength: 400000,
+    defaultMaxOutputTokens: 128000,
     headers: {
       Version: "0.92.0",
       "Openai-Beta": "responses=experimental",
@@ -351,7 +369,7 @@ export const REGISTRY: Record<string, RegistryEntry> = {
       tokenUrl: "https://auth.openai.com/oauth/token",
     },
     models: [
-      { id: "gpt-5.4", name: "GPT 5.4", targetFormat: "openai-responses" },
+      { id: "gpt-5.4", name: "GPT 5.4", targetFormat: "openai-responses", contextLength: 1050000 },
       { id: "gpt-5.4-mini", name: "GPT 5.4 Mini", targetFormat: "openai-responses" },
       { id: "gpt-5.3-codex", name: "GPT 5.3 Codex" },
       { id: "gpt-5.3-codex-xhigh", name: "GPT 5.3 Codex (xHigh)" },

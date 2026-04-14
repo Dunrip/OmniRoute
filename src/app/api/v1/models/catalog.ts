@@ -264,6 +264,7 @@ export async function getUnifiedModelsResponse(
           getVisionCapabilityFields(aliasId) || getVisionCapabilityFields(model.id);
         // Model-level context length overrides provider default
         const contextLength = model.contextLength || defaultContextLength;
+        const maxOutputTokens = model.maxOutputTokens || registryEntry?.defaultMaxOutputTokens;
 
         models.push({
           id: aliasId,
@@ -274,6 +275,7 @@ export async function getUnifiedModelsResponse(
           root: model.id,
           parent: null,
           ...(contextLength ? { context_length: contextLength } : {}),
+          ...(maxOutputTokens ? { max_output_tokens: maxOutputTokens } : {}),
           ...(visionFields || {}),
         });
 
@@ -292,6 +294,7 @@ export async function getUnifiedModelsResponse(
             root: model.id,
             parent: aliasId,
             ...(contextLength ? { context_length: contextLength } : {}),
+            ...(maxOutputTokens ? { max_output_tokens: maxOutputTokens } : {}),
             ...(providerVisionFields || {}),
           });
         }
@@ -576,6 +579,10 @@ export async function getUnifiedModelsResponse(
           typeof (model as any).contextLength === "number"
             ? (model as any).contextLength
             : undefined;
+        const maxOutputTokens =
+          typeof (model as any).maxOutputTokens === "number"
+            ? (model as any).maxOutputTokens
+            : undefined;
 
         models.push({
           id: aliasId,
@@ -586,6 +593,7 @@ export async function getUnifiedModelsResponse(
           root: modelId,
           parent: null,
           ...(contextLength ? { context_length: contextLength } : {}),
+          ...(maxOutputTokens ? { max_output_tokens: maxOutputTokens } : {}),
           ...(visionFields || {}),
         });
       }
