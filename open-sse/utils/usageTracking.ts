@@ -177,7 +177,7 @@ export function filterUsageForFormat(usage, targetFormat) {
     // Streaming extractUsage returns flat cache_read_input_tokens / cache_creation_input_tokens
     // but OpenAI SDKs expect prompt_tokens_details.cached_tokens.
     if (!convertedUsage.prompt_tokens_details) {
-      const cacheRead = convertedUsage.cache_read_input_tokens;
+      const cacheRead = convertedUsage.cache_read_input_tokens ?? convertedUsage.cached_tokens;
       const cacheCreate = convertedUsage.cache_creation_input_tokens;
       if ((cacheRead && cacheRead > 0) || (cacheCreate && cacheCreate > 0)) {
         convertedUsage.prompt_tokens_details = {};

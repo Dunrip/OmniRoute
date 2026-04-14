@@ -272,3 +272,49 @@ test("Claude stream: message_stop falls back to tool_calls when tool use already
 test("Claude stream: unsupported events return null", () => {
   assert.equal(claudeToOpenAIResponse({ type: "error" }, createState()), null);
 });
+
+test("Claude stream: prompt_tokens_details survives through final SSE chunk with cache tokens", () => {
+  // Verifies that when a Claude streaming response has cache tokens in the final message_delta,
+  // the prompt_tokens_details with cached_tokens and cache_creation_tokens are preserved
+  // and available for the SSE output path to pass through to the client.
+  const state = createState();
+  claudeToOpenAIResponse(
+    { type: "message_start", message: { id: "msg1", model: "claude-3-7-sonnet" } },
+    state
+  );
+
+  // Final message_delta with cache read and creation tokens
+  const result = claudeToOpenAIResponse(
+    {
+      type: "message_delta",
+      delta: { stop_reason: "end_turn" },
+      usage: {
+        input_tokens: 100,
+        output_tokens: 50,
+        cache_read_input_tokens: 368527,
+        cache_creation_input_tokens: 6154,
+      },
+    },
+    state
+  );
+
+  // Assertions: final chunk must have proper usage with nested prompt_tokens_details
+  assert.ok(result[0].usage, "usage object must exist");
+  assert.ok(result[0].usage.prompt_tokens_details, "prompt_tokens_details must exist");
+  assert.equal(
+    result[0].usage.prompt_tokens_details.cached_tokens,
+    368527,
+    "cached_tokens must be preserved"
+  );
+  assert.equal(
+    result[0].usage.prompt_tokens_details.cache_creation_tokens,
+    6154,
+    "cache_creation_tokens must be preserved"
+  );
+  // Verify aggregated tokens include cache
+  assert.equal(
+    result[0].usage.prompt_tokens,
+    368527 + 6154 + 100,
+    "prompt_tokens must include cache read + cache creation + input"
+  );
+});

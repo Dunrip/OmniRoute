@@ -663,7 +663,12 @@ export function createSSEStream(options: StreamOptions = {}) {
               } else if (state.finishReason && isFinishChunk && state.usage) {
                 // Add buffer and filter usage for client (but keep original in state.usage for logging)
                 const buffered = addBufferToUsage(state.usage);
-                itemSanitized.usage = filterUsageForFormat(buffered, sourceFormat);
+                const filtered = filterUsageForFormat(buffered, sourceFormat);
+                // Preserve translator-emitted prompt_tokens_details (cache tokens) if present in original item
+                if (item?.usage?.prompt_tokens_details && !filtered.prompt_tokens_details) {
+                  filtered.prompt_tokens_details = item.usage.prompt_tokens_details;
+                }
+                itemSanitized.usage = filtered;
               }
 
               const output = formatSSE(itemSanitized, sourceFormat);
