@@ -12,7 +12,7 @@ test("CLAUDE_OAUTH_TOOL_PREFIX is mcp_", () => {
 
 // ── normal prefixing ──────────────────────────────────────────────────────────
 
-test("tool names without the prefix get mcp_ prepended", () => {
+test("tool names without the prefix get mcp_ prepended with PascalCase (v1.6.0)", () => {
   const result = openaiToClaudeRequest(
     "claude-sonnet-4-6",
     {
@@ -31,9 +31,34 @@ test("tool names without the prefix get mcp_ prepended", () => {
     false
   );
 
+  // v1.6.0: only the first char after mcp_ is uppercased.
+  // Anthropic's validator rejects lowercase mcp_* names with HTTP 400.
   assert.equal(result.tools.length, 1);
-  assert.equal(result.tools[0].name, "mcp_read_file");
-  assert.equal(result._toolNameMap.get("mcp_read_file"), "read_file");
+  assert.equal(result.tools[0].name, "mcp_Read_file");
+  assert.equal(result._toolNameMap.get("mcp_Read_file"), "read_file");
+});
+
+test("v1.6.0: single-word tool name gets PascalCased (bash -> mcp_Bash)", () => {
+  const result = openaiToClaudeRequest(
+    "claude-sonnet-4-6",
+    {
+      messages: [{ role: "user", content: "run tool" }],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "bash",
+            description: "Run bash",
+            parameters: { type: "object", properties: {} },
+          },
+        },
+      ],
+    },
+    false
+  );
+
+  assert.equal(result.tools[0].name, "mcp_Bash");
+  assert.equal(result._toolNameMap.get("mcp_Bash"), "bash");
 });
 
 // ── double-prefix guard ───────────────────────────────────────────────────────

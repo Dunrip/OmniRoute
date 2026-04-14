@@ -45,7 +45,7 @@ import {
 } from "@/lib/usage/tokenAccounting";
 import { recordCost } from "@/domain/costRules";
 import { calculateCost } from "@/lib/usage/costCalculator";
-import { CLAUDE_OAUTH_TOOL_PREFIX } from "../translator/request/openai-to-claude.ts";
+import { CLAUDE_OAUTH_TOOL_PREFIX, prefixName } from "../translator/request/openai-to-claude.ts";
 import {
   getModelNormalizeToolCallId,
   getModelPreserveOpenAIDeveloperRole,
@@ -189,7 +189,9 @@ function buildClaudePassthroughToolNameMap(body: Record<string, unknown> | null 
         : toolRecord;
     const originalName = typeof toolData?.name === "string" ? toolData.name.trim() : "";
     if (!originalName) continue;
-    toolNameMap.set(`${CLAUDE_OAUTH_TOOL_PREFIX}${originalName}`, originalName);
+    // v1.6.0: map key uses PascalCase-after-prefix (e.g. mcp_Bash),
+    // matching what prefixName() produces in openaiToClaudeRequest.
+    toolNameMap.set(prefixName(originalName), originalName);
   }
 
   return toolNameMap.size > 0 ? toolNameMap : null;
@@ -1069,10 +1071,10 @@ export async function handleChatCore({
       translatedBody = { ...body };
 
       // Issue #199 + #618: Disable tool name prefix in Claude passthrough ONLY.
-      // The mcp_ prefix is designed for OpenAI→Claude translation to avoid
-      // conflicts with Claude OAuth tools, but in the passthrough path the tools
-      // are already in Claude format. Applying the prefix turns "Bash" into
-      // "mcp_Bash", which Claude rejects ("No such tool available: mcp_Bash").
+      // In passthrough (Claude→Claude), the client has already named tools in
+      // whatever convention it wants — adding our prefix would re-wrap names
+      // that may already be correctly formed (e.g. "mcp_Bash" from a v1.6.0
+      // client would become "mcp_Mcp_Bash" without the already-prefixed guard).
       // Only disable when source is also Claude (true passthrough), not for
       // OpenAI→Claude translation which needs the prefix for OAuth compliance.
       if (targetFormat === FORMATS.CLAUDE && sourceFormat === FORMATS.CLAUDE) {

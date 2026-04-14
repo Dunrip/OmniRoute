@@ -1,14 +1,41 @@
 import { register } from "../registry.ts";
 import { FORMATS } from "../formats.ts";
-import { CLAUDE_SYSTEM_PROMPT } from "../../config/constants.ts";
+import { CLAUDE_SYSTEM_PROMPT, experimentalKeepSystemPrompt } from "../../config/constants.ts";
 import { adjustMaxTokens } from "../helpers/maxTokensHelper.ts";
 import { sanitizeToolId } from "../helpers/schemaCoercion.ts";
 import { DEFAULT_THINKING_CLAUDE_SIGNATURE } from "../../config/defaultThinkingSignature.ts";
+import { buildBillingHeaderValue } from "../helpers/claudeBilling.ts";
 
 // Prefix for Claude OAuth tool names to avoid conflicts
 // Can be disabled per-request via body._disableToolPrefix = true
 export const CLAUDE_OAUTH_TOOL_PREFIX = "mcp_";
 const CLAUDE_TOOL_CHOICE_REQUIRED = "an" + "y";
+
+/**
+ * v1.6.0: PascalCase-after-prefix naming for Claude OAuth tools.
+ *
+ *   bash       -> mcp_Bash
+ *   read_file  -> mcp_Read_file
+ *
+ * Anthropic's validator flags lowercase mcp_* names as non-Claude-Code
+ * clients and returns HTTP 400. Only the FIRST character after the
+ * prefix is uppercased — downstream segments stay as-is.
+ *
+ * Names that already start with `mcp_` are returned untouched (guards
+ * against double-prefixing when client already speaks Claude format).
+ */
+export function prefixName(name: string): string {
+  if (!name) return name;
+  if (name.startsWith(CLAUDE_OAUTH_TOOL_PREFIX)) return name;
+  return `${CLAUDE_OAUTH_TOOL_PREFIX}${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+}
+
+/** Inverse of prefixName — strip `mcp_` and restore lowercase leading char. */
+export function unprefixName(name: string): string {
+  if (!name || !name.startsWith(CLAUDE_OAUTH_TOOL_PREFIX)) return name;
+  const stripped = name.slice(CLAUDE_OAUTH_TOOL_PREFIX.length);
+  return `${stripped.charAt(0).toLowerCase()}${stripped.slice(1)}`;
+}
 
 type ClaudeContentBlock = Record<string, unknown>;
 type ClaudeMessage = {
@@ -265,13 +292,10 @@ export function openaiToClaudeRequest(model, body, stream, credentials = null, p
           return null;
         }
 
-        // Claude OAuth requires prefixed tool names to avoid conflicts
-        // When prefix is disabled (non-Claude backends), use original name
-        const toolName = disableToolPrefix
-          ? originalName
-          : originalName.startsWith(CLAUDE_OAUTH_TOOL_PREFIX)
-            ? originalName
-            : CLAUDE_OAUTH_TOOL_PREFIX + originalName;
+        // Claude OAuth requires prefixed tool names to avoid conflicts.
+        // v1.6.0: prefixName applies PascalCase-after-prefix (mcp_Bash).
+        // When prefix is disabled (non-Claude backends), use original name.
+        const toolName = disableToolPrefix ? originalName : prefixName(originalName);
         // Store mapping for response translation (prefixed → original)
         if (!disableToolPrefix) {
           toolNameMap.set(toolName, originalName);
@@ -334,8 +358,23 @@ export function openaiToClaudeRequest(model, body, stream, credentials = null, p
   const isClaudeOAuth = provider === "claude" && credentials?.accessToken && !credentials?.apiKey;
   const systemText = systemParts.length > 0 ? systemParts.join("\n") : "";
 
-  if (!isClaudeOAuth || !systemText) {
-    // Non-OAuth or no system text: standard behavior
+  // v1.5.0: inject billing header into the identity block so Anthropic
+  // can attribute OAuth usage to Claude Code sessions. Must be computed
+  // before any preamble insertion so the hash reflects the real first
+  // user message, not a synthetic preamble.
+  if (isClaudeOAuth) {
+    const billingHeader = buildBillingHeaderValue(result.messages);
+    if (billingHeader) {
+      claudeCodePrompt.text = `${billingHeader}\n\n${CLAUDE_SYSTEM_PROMPT}`;
+    }
+  }
+
+  // v1.5.1: EXPERIMENTAL_KEEP_SYSTEM_PROMPT skips relocation and keeps
+  // sanitized system text in system[] instead of moving it to a preamble.
+  const keepSystemPrompt = experimentalKeepSystemPrompt();
+
+  if (!isClaudeOAuth || !systemText || keepSystemPrompt) {
+    // Non-OAuth, no system text, or experimental-keep: standard behavior
     if (systemText) {
       result.system = [
         claudeCodePrompt,
@@ -520,12 +559,9 @@ function getContentBlocksFromMessage(msg, toolNameMap = new Map(), disableToolPr
           const fnName = tc.function?.name;
           if (!fnName || !fnName.trim()) continue;
 
-          // Apply prefix to tool name (skip if disabled)
-          const toolName = disableToolPrefix
-            ? fnName
-            : fnName.startsWith(CLAUDE_OAUTH_TOOL_PREFIX)
-              ? fnName
-              : CLAUDE_OAUTH_TOOL_PREFIX + fnName;
+          // Apply prefix to tool name (skip if disabled).
+          // v1.6.0: prefixName applies PascalCase-after-prefix.
+          const toolName = disableToolPrefix ? fnName : prefixName(fnName);
           blocks.push({
             type: "tool_use",
             id: sanitizeToolId(tc.id),
@@ -601,14 +637,13 @@ function openaiToClaudeRequestForAntigravity(model, body, stream) {
     }
   }
 
-  // Strip prefix from tool names for Antigravity (doesn't use Claude OAuth)
+  // Strip prefix from tool names for Antigravity (doesn't use Claude OAuth).
+  // v1.6.0: use unprefixName so the case change applied by prefixName is
+  // also reversed (e.g. mcp_Read_file -> read_file).
   if (result.tools && Array.isArray(result.tools)) {
     result.tools = result.tools.map((tool) => {
       if (tool.name && tool.name.startsWith(CLAUDE_OAUTH_TOOL_PREFIX)) {
-        return {
-          ...tool,
-          name: tool.name.slice(CLAUDE_OAUTH_TOOL_PREFIX.length),
-        };
+        return { ...tool, name: unprefixName(tool.name) };
       }
       return tool;
     });
@@ -629,10 +664,7 @@ function openaiToClaudeRequestForAntigravity(model, body, stream) {
           blockName &&
           blockName.startsWith(CLAUDE_OAUTH_TOOL_PREFIX)
         ) {
-          return {
-            ...block,
-            name: blockName.slice(CLAUDE_OAUTH_TOOL_PREFIX.length),
-          };
+          return { ...block, name: unprefixName(blockName) };
         }
         return block;
       });

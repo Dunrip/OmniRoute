@@ -4,8 +4,8 @@
  * Shared authentication configuration for Claude CLI OAuth flows.
  * Used by both src/lib/oauth/* and open-sse/* modules.
  *
- * Version: @ex-machina/opencode-anthropic-auth v1.4.0
- * Last Synced: 2026-04-12
+ * Version: @ex-machina/opencode-anthropic-auth v1.6.0
+ * Last Synced: 2026-04-14
  */
 
 /**
@@ -70,8 +70,25 @@ export const CLAUDE_BETA_QUERY_PARAM = "true";
 /**
  * MCP Tool Prefix.
  * Prefix used for MCP (Model Context Protocol) tool names.
+ *
+ * v1.6.0 convention: the character immediately after the prefix is
+ * uppercased (e.g. `bash` -> `mcp_Bash`). Lowercase names are
+ * flagged by Anthropic's validator as non-Claude-Code clients and
+ * result in a 400 rejection.
  */
 export const MCP_TOOL_PREFIX = "mcp_";
+
+/**
+ * Billing header injected into the identity system block.
+ * v1.5.0: content-consistency hashing derived from the first user
+ * message. Anthropic reads this text-prepended header to attribute
+ * usage back to Claude Code sessions.
+ */
+export const CLAUDE_BILLING_HEADER_NAME = "x-anthropic-billing-header";
+export const CCH_SALT = "59cf53e54c78";
+export const CCH_POSITIONS: readonly number[] = [4, 7, 20] as const;
+export const CLAUDE_CODE_VERSION = "2.1.89";
+export const CLAUDE_CODE_ENTRYPOINT = "sdk-cli";
 
 /**
  * Claude Auth Configuration Object.

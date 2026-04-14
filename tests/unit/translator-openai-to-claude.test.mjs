@@ -150,10 +150,10 @@ test("OpenAI -> Claude converts multimodal content, tool declarations, tool call
   );
 
   assert.equal(result.tools.length, 1);
-  assert.equal(result.tools[0].name, `${CLAUDE_OAUTH_TOOL_PREFIX}weather.get`);
+  assert.equal(result.tools[0].name, `${CLAUDE_OAUTH_TOOL_PREFIX}Weather.get`);
   assert.deepEqual(result.tools[0].input_schema, { type: "object", properties: {} });
   assert.deepEqual(result.tools[0].cache_control, { type: "ephemeral", ttl: "1h" });
-  assert.equal(result._toolNameMap.get(`${CLAUDE_OAUTH_TOOL_PREFIX}weather.get`), "weather.get");
+  assert.equal(result._toolNameMap.get(`${CLAUDE_OAUTH_TOOL_PREFIX}Weather.get`), "weather.get");
 
   assert.equal(result.messages[0].role, "user");
   assert.equal(result.messages[0].content.length, 3);
@@ -173,7 +173,7 @@ test("OpenAI -> Claude converts multimodal content, tool declarations, tool call
   assert.equal(assistantMessage.content[0].signature, DEFAULT_THINKING_CLAUDE_SIGNATURE);
   assert.equal(assistantMessage.content[1].text, "Calling tool");
   assert.equal(assistantMessage.content[2].type, "tool_use");
-  assert.equal(assistantMessage.content[2].name, `${CLAUDE_OAUTH_TOOL_PREFIX}weather.get`);
+  assert.equal(assistantMessage.content[2].name, `${CLAUDE_OAUTH_TOOL_PREFIX}Weather.get`);
   assert.deepEqual(assistantMessage.content[2].input, { city: "Tokyo" });
   assert.deepEqual(assistantMessage.content[2].cache_control, { type: "ephemeral" });
 
