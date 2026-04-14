@@ -1,3 +1,82 @@
+# OmniRoute Fork — Dunrip
+
+> Personal fork of [OmniRoute](https://github.com/diegosouzapw/OmniRoute) with Claude OAuth compatibility patches, accurate model specs, and OpenCode integration.
+
+## What This Fork Adds
+
+### Claude OAuth Compatibility
+
+- Synced auth-plugin behavior to v1.6.0 for Anthropic API compatibility
+- Tool-name normalization (lowercase/snake_case → PascalCase) to avoid Claude OAuth validation rejections
+- Claude Code-compatible request envelope (session metadata, `context_management`, `output_config`)
+- Session header propagation (`X-Claude-Code-Session-Id`)
+- System prompt relocation for OAuth requests
+- Stable preamble message for prompt caching efficiency
+- 1M context window via `context-1m-2025-08-07` beta header (for Opus/Sonnet 4.6)
+
+### Accurate `/v1/models` Specs
+
+- Per-model `context_length` overrides (GPT-5.4: 1.05M, Claude 4.6: 1M, Kimi K2.5: 256K)
+- New `max_output_tokens` field in `/v1/models` response
+- Provider-level defaults for output token limits
+
+### Infrastructure Fixes
+
+- Health check proxy config unwrap fix (prevents `Context proxy host is required` errors during token refresh)
+- User-Agent version bump to `claude-cli/2.1.89`
+
+## Model Routing Table
+
+| Prefix | Provider             | Example Model       | Context   | Max Output |
+| ------ | -------------------- | ------------------- | --------- | ---------- |
+| `cc/`  | Claude (OAuth)       | `claude-opus-4-6`   | 1,000,000 | 128,000    |
+| `cc/`  | Claude (OAuth)       | `claude-sonnet-4-6` | 1,000,000 | 64,000     |
+| `cc/`  | Claude (OAuth)       | `claude-haiku-4-5`  | 200,000   | 8,192      |
+| `cx/`  | Codex/OpenAI (OAuth) | `gpt-5.4`           | 1,050,000 | 128,000    |
+| `cx/`  | Codex/OpenAI (OAuth) | `gpt-5.4-mini`      | 400,000   | 128,000    |
+| `kmc/` | Kimi Coding (OAuth)  | `kimi-k2.5`         | 256,000   | 32,768     |
+
+## Quick Start
+
+```bash
+# Requires Node 22 (use fnm)
+eval "$(fnm env)"
+fnm use 22
+
+# Clone and install
+git clone https://github.com/Dunrip/OmniRoute.git
+cd OmniRoute
+npm install
+
+# Build and run
+npm run build
+npm run start
+# Dashboard: http://localhost:20128
+```
+
+## Fork Commits
+
+Key patches in this fork (newest first):
+
+- `fix(models)`: accurate `context_length` and `max_output_tokens` in `/v1/models`
+- `fix(healthcheck)`: unwrap proxy config before token refresh
+- `feat(claude)`: sync auth-plugin to v1.6.0
+- `fix(claude)`: remove unconditional context-1m beta header (haiku fix)
+- `feat(claude)`: enable 1M context window via beta header
+- `perf(claude)`: stable preamble message for cache efficiency
+- `fix(claude)`: system prompt relocation + tool prefix for OAuth
+- `fix(claude)`: bump User-Agent to 2.1.89
+
+## Upstream
+
+This fork is based on [diegosouzapw/OmniRoute](https://github.com/diegosouzapw/OmniRoute) v3.6.4+.
+
+---
+
+_Below is the original upstream README._
+
+---
+
 # 🚀 OmniRoute — The Free AI Gateway
 
 ### Never stop coding. Smart routing to **FREE & low-cost AI models** with automatic fallback.
