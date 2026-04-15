@@ -28,6 +28,7 @@ test("resolveModelAlias: resolves deprecated Gemini model", () => {
 test("resolveModelAlias: resolves deprecated Claude model", () => {
   assert.equal(resolveModelAlias("claude-3-opus-20240229"), "claude-opus-4-20250514");
   assert.equal(resolveModelAlias("claude-3-5-sonnet-latest"), "claude-sonnet-4-20250514");
+  assert.equal(resolveModelAlias("claude-3-5-sonnet-20241022"), "claude-sonnet-4-20250514");
 });
 
 test("resolveModelAlias: resolves deprecated OpenAI model", () => {
@@ -39,6 +40,33 @@ test("resolveModelAlias: handles null/empty", () => {
   assert.equal(resolveModelAlias(""), "");
   assert.equal(resolveModelAlias(null), null);
   assert.equal(resolveModelAlias(undefined), undefined);
+});
+
+test("resolveModelAlias: resolves provider-prefixed deprecated Claude model", () => {
+  assert.equal(
+    resolveModelAlias("claude/claude-3-5-sonnet-20241022"),
+    "claude/claude-sonnet-4-20250514"
+  );
+  assert.equal(resolveModelAlias("claude/claude-3-opus-20240229"), "claude/claude-opus-4-20250514");
+});
+
+test("resolveModelAlias: resolves provider-prefixed Gemini model", () => {
+  assert.equal(resolveModelAlias("gemini/gemini-pro"), "gemini/gemini-2.5-pro");
+  assert.equal(resolveModelAlias("gemini/gemini-1.5-pro"), "gemini/gemini-2.5-pro");
+});
+
+test("resolveModelAlias: returns original for non-deprecated provider-prefixed model", () => {
+  assert.equal(resolveModelAlias("claude/claude-opus-4-6"), "claude/claude-opus-4-6");
+});
+
+test("resolveModelAlias: handles malformed provider prefix gracefully", () => {
+  // Trailing slash after provider should pass through unchanged
+  assert.equal(resolveModelAlias("claude/"), "claude/");
+  // Non-matching prefix with bare ID should still apply alias resolution on the bare part
+  assert.equal(
+    resolveModelAlias("openai/claude-3-5-sonnet-20241022"),
+    "openai/claude-sonnet-4-20250514"
+  );
 });
 
 // ─── getDeprecationNotice ───────────────────────────────────────────────────

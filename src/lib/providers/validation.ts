@@ -273,7 +273,7 @@ async function validateAnthropicLikeProvider({
   }
 
   const testModelId =
-    providerSpecificData?.validationModelId || modelId || "claude-3-5-sonnet-20241022";
+    providerSpecificData?.validationModelId || modelId || "claude-sonnet-4-20250514";
 
   const response = await fetch(baseUrl, {
     method: "POST",
@@ -807,7 +807,7 @@ async function validateAnthropicCompatibleProvider({ apiKey, providerSpecificDat
   }
 
   // Step 2: Fallback — try a minimal messages request
-  const testModelId = providerSpecificData?.validationModelId || "claude-3-5-sonnet-20241022";
+  const testModelId = providerSpecificData?.validationModelId || "claude-sonnet-4-20250514";
   try {
     const messagesRes = await fetch(
       joinBaseUrlAndPath(baseUrl, providerSpecificData?.chatPath || "/messages"),

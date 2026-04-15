@@ -26,6 +26,7 @@ const BUILT_IN_ALIASES: Record<string, string> = {
   "claude-3-sonnet-20240229": "claude-sonnet-4-20250514",
   "claude-3-haiku-20240307": "claude-3-5-sonnet-20241022",
   "claude-3-5-sonnet-latest": "claude-sonnet-4-20250514",
+  "claude-3-5-sonnet-20241022": "claude-sonnet-4-20250514",
   "claude-3-5-haiku-latest": "claude-3-5-sonnet-20241022",
 
   // OpenAI legacy → current
@@ -88,13 +89,28 @@ export function getAllAliases(): Record<string, string> {
 export function resolveModelAlias(modelId: string): string {
   if (!modelId) return modelId;
 
+  // Handle provider-prefixed model IDs (e.g., 'claude/claude-3-5-sonnet-20241022')
+  // Extract provider prefix and bare model ID, then resolve the bare ID
+  const slashIndex = modelId.indexOf("/");
+  const isProviderPrefixed = slashIndex > 0 && slashIndex < modelId.length - 1;
+  const providerPrefix = isProviderPrefixed ? modelId.substring(0, slashIndex + 1) : "";
+  const bareModelId = isProviderPrefixed ? modelId.substring(slashIndex + 1) : modelId;
+
   // Check custom aliases first (higher priority)
-  if (_customAliases[modelId]) return _customAliases[modelId];
+  let resolved = _customAliases[bareModelId] || _customAliases[modelId];
 
   // Then check built-in
-  if (BUILT_IN_ALIASES[modelId]) return BUILT_IN_ALIASES[modelId];
+  if (!resolved) {
+    resolved = BUILT_IN_ALIASES[bareModelId] || BUILT_IN_ALIASES[modelId];
+  }
 
-  return modelId;
+  // If no alias found, use the original bare or full model ID
+  if (!resolved) {
+    resolved = bareModelId;
+  }
+
+  // Reconstruct with provider prefix if it was present
+  return isProviderPrefixed ? providerPrefix + resolved : resolved;
 }
 
 /**
