@@ -18,6 +18,25 @@ function normalizeConfiguredPath(dir: unknown): string | null {
   return path.resolve(trimmed);
 }
 
+function isNodeTestRuntime(): boolean {
+  return (
+    process.env.NODE_ENV === "test" ||
+    process.env.VITEST !== undefined ||
+    process.env.NODE_TEST_CONTEXT !== undefined ||
+    process.execArgv.some((arg) => arg === "--test" || arg.endsWith("/node:test")) ||
+    process.argv.some((arg) => arg === "--test")
+  );
+}
+
+function getTestIsolatedDataDir(): string {
+  const workerId =
+    process.env.NODE_TEST_WORKER_ID ||
+    process.env.VITEST_POOL_ID ||
+    process.env.JEST_WORKER_ID ||
+    "0";
+  return path.join(os.tmpdir(), `${APP_NAME}-test-${workerId}-${process.pid}`);
+}
+
 export function getLegacyDotDataDir() {
   return path.join(safeHomeDir(), `.${APP_NAME}`);
 }
@@ -44,6 +63,8 @@ export function resolveDataDir({ isCloud = false }: { isCloud?: boolean } = {}):
 
   const configured = normalizeConfiguredPath(process.env.DATA_DIR);
   if (configured) return configured;
+
+  if (isNodeTestRuntime()) return getTestIsolatedDataDir();
 
   return getDefaultDataDir();
 }

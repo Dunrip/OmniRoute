@@ -7,7 +7,7 @@
 import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
-import { resolveDataDir, getLegacyDotDataDir } from "../dataPaths";
+import { resolveDataDir, isSamePath } from "../dataPaths";
 import { runMigrations } from "./migrationRunner";
 
 type SqliteDatabase = import("better-sqlite3").Database;
@@ -23,24 +23,38 @@ export const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
 // ──────────────── Paths ────────────────
 
 export const DATA_DIR = resolveDataDir({ isCloud });
-const LEGACY_DATA_DIR = isCloud ? null : getLegacyDotDataDir();
 export const SQLITE_FILE = isCloud ? null : path.join(DATA_DIR, "storage.sqlite");
-const JSON_DB_FILE = isCloud ? null : path.join(DATA_DIR, "db.json");
 export const DB_BACKUPS_DIR = isCloud ? null : path.join(DATA_DIR, "db_backups");
 
-// Ensure data directory exists — with fallback for restricted home directories (#133)
-if (!isCloud && !fs.existsSync(DATA_DIR)) {
+function getCurrentDataDir(): string {
+  return resolveDataDir({ isCloud });
+}
+
+function getCurrentSqliteFile(dataDir = getCurrentDataDir()): string | null {
+  return isCloud ? null : path.join(dataDir, "storage.sqlite");
+}
+
+function getCurrentJsonDbFile(dataDir = getCurrentDataDir()): string | null {
+  return isCloud ? null : path.join(dataDir, "db.json");
+}
+
+function ensureDataDirExists(dataDir: string): void {
+  if (isCloud || fs.existsSync(dataDir)) return;
+
   try {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.mkdirSync(dataDir, { recursive: true });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(
-      `[DB] Cannot create data directory '${DATA_DIR}': ${msg}\n` +
+      `[DB] Cannot create data directory '${dataDir}': ${msg}\n` +
         `[DB] Set the DATA_DIR environment variable to a writable path, e.g.:\n` +
         `[DB]   DATA_DIR=/path/to/writable/dir omniroute`
     );
   }
 }
+
+// Ensure the initial module data directory exists — with fallback for restricted home directories (#133)
+if (!isCloud) ensureDataDirExists(DATA_DIR);
 
 // ──────────────── Schema ────────────────
 
@@ -311,24 +325,61 @@ export function cleanNulls(obj: unknown): JsonRecord {
 
 declare global {
   var __omnirouteDb: import("better-sqlite3").Database | undefined;
+  var __omnirouteDbFile: string | undefined;
 }
 
 function getDb(): SqliteDatabase | null {
   return globalThis.__omnirouteDb ?? null;
 }
 
-function setDb(db: SqliteDatabase | null): void {
+function getDbFile(): string | null {
+  return globalThis.__omnirouteDbFile ?? null;
+}
+
+function setDb(db: SqliteDatabase | null, sqliteFile?: string | null): void {
   if (db) {
     globalThis.__omnirouteDb = db;
+    if (sqliteFile) {
+      globalThis.__omnirouteDbFile = sqliteFile;
+    } else {
+      delete globalThis.__omnirouteDbFile;
+    }
   } else {
     delete globalThis.__omnirouteDb;
+    delete globalThis.__omnirouteDbFile;
   }
 }
 
 function checkpointDb(db: SqliteDatabase, mode: CheckpointMode = "TRUNCATE"): boolean {
-  if (isCloud || isBuildPhase || !SQLITE_FILE) return false;
+  if (isCloud || isBuildPhase || !getDbFile()) return false;
   db.pragma(`wal_checkpoint(${mode})`);
   return true;
+}
+
+function recycleDbInstance(db: SqliteDatabase, reason: string): void {
+  try {
+    if (db.open) db.close();
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[DB] Failed to recycle stale DB (${reason}):`, message);
+  } finally {
+    setDb(null);
+  }
+}
+
+function shouldRecycleDb(existing: SqliteDatabase, sqliteFile: string | null): string | null {
+  if (!existing.open) return "connection was already closed";
+  if (isCloud || isBuildPhase || !sqliteFile) return null;
+
+  const currentDbFile = getDbFile();
+  if (!currentDbFile) return "db file tracking metadata missing";
+  if (!isSamePath(currentDbFile, sqliteFile)) {
+    return `DATA_DIR changed from ${currentDbFile} to ${sqliteFile}`;
+  }
+  if (!fs.existsSync(path.dirname(sqliteFile))) return "data directory no longer exists";
+  if (!fs.existsSync(sqliteFile)) return "sqlite file no longer exists";
+
+  return null;
 }
 
 function ensureProviderConnectionsColumns(db: SqliteDatabase) {
@@ -413,8 +464,16 @@ function hasColumn(db: SqliteDatabase, tableName: string, columnName: string): b
 }
 
 export function getDbInstance(): SqliteDatabase {
+  const currentDataDir = getCurrentDataDir();
+  const currentSqliteFile = getCurrentSqliteFile(currentDataDir);
   const existing = getDb();
-  if (existing) return existing;
+  if (existing) {
+    const recycleReason = shouldRecycleDb(existing, currentSqliteFile);
+    if (!recycleReason) {
+      return existing;
+    }
+    recycleDbInstance(existing, recycleReason);
+  }
 
   if (isCloud || isBuildPhase) {
     if (isBuildPhase) {
@@ -424,15 +483,17 @@ export function getDbInstance(): SqliteDatabase {
     memoryDb.pragma("journal_mode = WAL");
     memoryDb.exec(SCHEMA_SQL);
     ensureUsageHistoryColumns(memoryDb);
-    setDb(memoryDb);
+    setDb(memoryDb, null);
     return memoryDb;
   }
 
-  const sqliteFile = SQLITE_FILE;
+  ensureDataDirExists(currentDataDir);
+
+  const sqliteFile = currentSqliteFile;
   if (!sqliteFile) {
     throw new Error("SQLITE_FILE is unavailable for local mode");
   }
-  const jsonDbFile = JSON_DB_FILE;
+  const jsonDbFile = getCurrentJsonDbFile(currentDataDir);
 
   // Detect and handle old schema format — preserve data when possible (#146)
   // Uses a single probe connection that becomes the real connection when possible.
@@ -488,11 +549,29 @@ export function getDbInstance(): SqliteDatabase {
       }
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      console.warn("[DB] Could not probe existing DB, will create fresh:", message);
+      const quarantinePath = `${sqliteFile}.corrupt-${new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-")}`;
+      console.warn(
+        `[DB] Could not probe existing DB (${message}) — quarantining to ${path.basename(
+          quarantinePath
+        )} and starting fresh`
+      );
       try {
-        fs.unlinkSync(sqliteFile);
-      } catch {
-        /* ok */
+        fs.renameSync(sqliteFile, quarantinePath);
+        for (const ext of ["-wal", "-shm"]) {
+          try {
+            if (fs.existsSync(sqliteFile + ext)) fs.unlinkSync(sqliteFile + ext);
+          } catch {
+            /* ok */
+          }
+        }
+      } catch (renameErr: unknown) {
+        const renameMessage = renameErr instanceof Error ? renameErr.message : String(renameErr);
+        console.error(
+          `[DB] Failed to quarantine unreadable DB — aborting init to avoid data loss: ${renameMessage}`
+        );
+        throw renameErr;
       }
     }
   }
@@ -537,7 +616,7 @@ export function getDbInstance(): SqliteDatabase {
   );
   versionStmt.run();
 
-  setDb(db);
+  setDb(db, sqliteFile);
   console.log(`[DB] SQLite database ready: ${sqliteFile}`);
   return db;
 }

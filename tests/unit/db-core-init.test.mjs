@@ -208,6 +208,38 @@ test("getDbInstance reuses the singleton and closeDbInstance resets it", serial,
   }
 });
 
+test("getDbInstance recreates the singleton when DATA_DIR changes", serial, async () => {
+  const firstDir = makeTempDir("omniroute-db-core-first-");
+  const secondDir = makeTempDir("omniroute-db-core-second-");
+
+  try {
+    await withEnv({ DATA_DIR: firstDir, NEXT_PHASE: undefined }, async () => {
+      const core = await importFresh("src/lib/db/core.ts");
+      const firstDb = core.getDbInstance();
+
+      assert.equal(core.SQLITE_FILE, path.join(path.resolve(firstDir), "storage.sqlite"));
+      assert.equal(firstDb.open, true);
+
+      process.env.DATA_DIR = secondDir;
+
+      const secondDb = core.getDbInstance();
+
+      assert.notStrictEqual(secondDb, firstDb);
+      assert.equal(firstDb.open, false);
+      assert.ok(
+        secondDb
+          .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+          .get("provider_connections")
+      );
+
+      core.resetDbInstance();
+    });
+  } finally {
+    removePath(firstDir);
+    removePath(secondDir);
+  }
+});
+
 test("local sqlite configuration enables WAL and sane pragmas", serial, async () => {
   const dataDir = makeTempDir("omniroute-db-core-");
 
@@ -255,6 +287,7 @@ test(
           XDG_CONFIG_HOME: undefined,
           HOME: fakeHome,
           APPDATA: undefined,
+          NODE_TEST_CONTEXT: undefined,
         },
         async () => {
           const core = await importFresh("src/lib/db/core.ts");
@@ -272,6 +305,27 @@ test(
     }
   }
 );
+
+test("module uses an isolated tmp data directory during node test runs", serial, async () => {
+  await withEnv(
+    {
+      DATA_DIR: undefined,
+      NEXT_PHASE: undefined,
+      XDG_CONFIG_HOME: undefined,
+      APPDATA: undefined,
+    },
+    async () => {
+      const core = await importFresh("src/lib/db/core.ts");
+      const expectedDir = path.join(
+        os.tmpdir(),
+        `omniroute-test-${process.env.NODE_TEST_WORKER_ID || "0"}-${process.pid}`
+      );
+
+      assert.equal(core.DATA_DIR, expectedDir);
+      assert.equal(core.SQLITE_FILE, path.join(expectedDir, "storage.sqlite"));
+    }
+  );
+});
 
 test("build phase uses an in-memory database without creating sqlite files", serial, async () => {
   const dataDir = makeTempDir("omniroute-db-build-");
@@ -347,6 +401,65 @@ test(
             .get("schema_migrations"),
           undefined
         );
+
+        core.resetDbInstance();
+      });
+    } finally {
+      removePath(dataDir);
+    }
+  }
+);
+
+test(
+  "unreadable existing DB is quarantined (not deleted) so data can be recovered",
+  serial,
+  async () => {
+    const dataDir = makeTempDir("omniroute-db-corrupt-");
+    const sqliteFile = path.join(dataDir, "storage.sqlite");
+    // Write non-SQLite bytes so better-sqlite3's readonly probe throws.
+    fs.writeFileSync(sqliteFile, Buffer.from("not a sqlite file — corrupt probe target"));
+    fs.writeFileSync(sqliteFile + "-shm", Buffer.alloc(8));
+    fs.writeFileSync(sqliteFile + "-wal", Buffer.alloc(8));
+
+    try {
+      await withEnv({ DATA_DIR: dataDir, NEXT_PHASE: undefined }, async () => {
+        const core = await importFresh("src/lib/db/core.ts");
+        const db = core.getDbInstance();
+
+        // A fresh DB should have been created.
+        assert.ok(
+          db
+            .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+            .get("provider_connections")
+        );
+
+        // The unreadable original must be preserved under a .corrupt-* sibling —
+        // never silently unlinked.
+        const siblings = fs.readdirSync(dataDir);
+        const quarantined = siblings.filter((f) => f.startsWith("storage.sqlite.corrupt-"));
+        assert.equal(
+          quarantined.length,
+          1,
+          `expected one quarantined file, got: ${siblings.join(", ")}`
+        );
+        assert.equal(
+          fs.readFileSync(path.join(dataDir, quarantined[0]), "utf8"),
+          "not a sqlite file — corrupt probe target"
+        );
+
+        // The stale 8-byte WAL/SHM junk from the bad prior process must not
+        // be carried over into the fresh DB — either removed, or replaced by
+        // SQLite's own fresh WAL/SHM which is always larger than 8 bytes.
+        for (const ext of ["-wal", "-shm"]) {
+          const p = path.join(dataDir, "storage.sqlite" + ext);
+          if (fs.existsSync(p)) {
+            assert.notEqual(
+              fs.statSync(p).size,
+              8,
+              `stale ${ext} file was not cleared before fresh DB init`
+            );
+          }
+        }
 
         core.resetDbInstance();
       });
