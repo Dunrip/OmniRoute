@@ -1,7 +1,7 @@
 import { HTTP_STATUS, FETCH_TIMEOUT_MS } from "../config/constants.ts";
 import { applyFingerprint, isCliCompatEnabled } from "../config/cliFingerprints.ts";
 import { getRotatingApiKey } from "../services/apiKeyRotator.ts";
-import { getOpenAICompatibleType } from "../services/provider.ts";
+import { getOpenAICompatibleType, isClaudeCodeCompatible } from "../services/provider.ts";
 
 /**
  * Sanitizes a custom API path to prevent path traversal attacks.
@@ -307,6 +307,33 @@ export class BaseExecutor {
             headers["Anthropic-Beta"] = existing + ",context-1m-2025-08-07";
           } else {
             headers["Anthropic-Beta"] = "context-1m-2025-08-07";
+          }
+        }
+      }
+
+      // Append context-management beta header for supported Claude models
+      const isClaudeProvider = this.provider === "claude" || isClaudeCodeCompatible(this.provider);
+      if (isClaudeProvider) {
+        const CONTEXT_MANAGEMENT_MODELS = [
+          "claude-opus-4-6",
+          "claude-sonnet-4-6",
+          "claude-sonnet-4-5",
+          "claude-sonnet-4",
+          "claude-opus-4-5",
+        ];
+        const baseModel = model.replace(/-\d{8}$/, "");
+        if (
+          CONTEXT_MANAGEMENT_MODELS.some(
+            (m) => baseModel === m || model === m || model.startsWith(m)
+          )
+        ) {
+          const existing = headers["Anthropic-Beta"] || headers["anthropic-beta"];
+          const key = headers["Anthropic-Beta"] !== undefined ? "Anthropic-Beta" : "anthropic-beta";
+          const CONTEXT_MANAGEMENT_BETA = "context-management-2025-06-27";
+          if (existing) {
+            headers[key] = existing + "," + CONTEXT_MANAGEMENT_BETA;
+          } else {
+            headers["Anthropic-Beta"] = CONTEXT_MANAGEMENT_BETA;
           }
         }
       }

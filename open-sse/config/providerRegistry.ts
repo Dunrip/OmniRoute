@@ -253,7 +253,7 @@ export const REGISTRY: Record<string, RegistryEntry> = {
     defaultMaxOutputTokens: 8192,
     headers: {
       "Anthropic-Version": "2023-06-01",
-      "Anthropic-Beta": `claude-code-20250219,${CLAUDE_BETA_HEADERS},fine-grained-tool-streaming-2025-05-14,context-management-2025-06-27,prompt-caching-scope-2026-01-05`,
+      "Anthropic-Beta": `claude-code-20250219,${CLAUDE_BETA_HEADERS},fine-grained-tool-streaming-2025-05-14,prompt-caching-scope-2026-01-05`,
       "Anthropic-Dangerous-Direct-Browser-Access": "true",
       "User-Agent": CLAUDE_CLI_USER_AGENT,
       "X-App": "cli",

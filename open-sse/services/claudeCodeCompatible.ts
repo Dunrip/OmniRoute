@@ -8,7 +8,7 @@ export const CLAUDE_CODE_COMPATIBLE_DEFAULT_MODELS_PATH = "/models";
 export const CLAUDE_CODE_COMPATIBLE_DEFAULT_MAX_TOKENS = 8092;
 export const CLAUDE_CODE_COMPATIBLE_ANTHROPIC_VERSION = "2023-06-01";
 export const CLAUDE_CODE_COMPATIBLE_ANTHROPIC_BETA =
-  "claude-code-20250219,interleaved-thinking-2025-05-14,context-management-2025-06-27,prompt-caching-scope-2026-01-05,effort-2025-11-24";
+  "claude-code-20250219,interleaved-thinking-2025-05-14,prompt-caching-scope-2026-01-05,effort-2025-11-24";
 export const CLAUDE_CODE_COMPATIBLE_USER_AGENT = "claude-cli/2.1.89 (external, sdk-cli)";
 export const CLAUDE_CODE_COMPATIBLE_BILLING_HEADER =
   "x-anthropic-billing-header: cc_version=2.1.89.728; cc_entrypoint=sdk-cli; cch=00000;";

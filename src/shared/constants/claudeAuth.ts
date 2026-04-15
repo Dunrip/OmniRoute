@@ -21,11 +21,15 @@ export const CLAUDE_CLI_USER_AGENT = "claude-cli/2.1.89 (external, cli)";
  * - oauth-2025-04-20: OAuth 2.0 flow support
  * - interleaved-thinking-2025-05-14: Extended thinking capability
  *
- * NOTE: context-1m-2025-08-07 is intentionally NOT here. The 1M context
- * beta is per-model (Sonnet/Opus 4.x only) and per-subscription, so
- * sending it on every request fails Haiku and Pro-tier accounts. It is
- * added conditionally in open-sse/executors/base.ts when the [1m] suffix
- * is used on a whitelisted model.
+ * NOTE: context-1m-2025-08-07 and context-management-2025-06-27 are
+ * intentionally NOT here. Both are per-model and per-subscription gated betas.
+ *
+ * - context-1m-2025-08-07 is added conditionally in
+ *   open-sse/executors/base.ts when the [1m] suffix is used on a
+ *   whitelisted model.
+ * - context-management-2025-06-27 is added conditionally in
+ *   open-sse/executors/base.ts for whitelisted models
+  (Opus 4.6, Sonnet 4.6/4.5/4, Opus 4.5).
  */
 export const CLAUDE_BETA_HEADERS = "oauth-2025-04-20, interleaved-thinking-2025-05-14";
 
