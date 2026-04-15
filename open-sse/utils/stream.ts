@@ -943,6 +943,13 @@ export function createSSEStream(options: StreamOptions = {}) {
                   )
                   .sort((a, b) => a.index - b.index);
               }
+              // In translate mode, only report completion tokens from the Claude output
+              // (prompt_tokens come from the client request, not this response turn)
+              const responseUsage = {
+                prompt_tokens: mode === STREAM_MODE.TRANSLATE ? 0 : prompt,
+                completion_tokens: completion,
+                total_tokens: mode === STREAM_MODE.TRANSLATE ? completion : prompt + completion,
+              };
               const responseBody = {
                 choices: [
                   {
@@ -950,11 +957,7 @@ export function createSSEStream(options: StreamOptions = {}) {
                     finish_reason: hasToolCalls ? "tool_calls" : "stop",
                   },
                 ],
-                usage: {
-                  prompt_tokens: prompt,
-                  completion_tokens: completion,
-                  total_tokens: prompt + completion,
-                },
+                usage: responseUsage,
                 _streamed: true,
               };
               onComplete({

@@ -1164,6 +1164,11 @@ export async function handleChatCore({
         }
       }
 
+      // If client provides _toolNameMap, signal to translator to disable prefix
+      if (translatedBody._toolNameMap instanceof Map) {
+        translatedBody._disableToolPrefix = true;
+      }
+
       const normalizeToolCallId = getModelNormalizeToolCallId(
         provider || "",
         model || "",
